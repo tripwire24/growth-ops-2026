@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { isSupabaseConfigured } from '../services/supabase';
-import { Mail, ArrowRight, AlertCircle, Database, Settings, Key, ArrowLeft, ExternalLink, CheckCircle, RefreshCw, Globe } from 'lucide-react';
+import { Mail, ArrowRight, AlertCircle, Database, Settings, Key, ArrowLeft, ExternalLink, CheckCircle, RefreshCw, Globe, Copy } from 'lucide-react';
 
 interface AuthPageProps {
   onBackToDemo?: () => void;
@@ -35,9 +35,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
 
   // 1. SETUP INSTRUCTIONS (If no keys)
   if (!isSupabaseConfigured) {
+    const currentUrl = typeof window !== 'undefined' ? window.location.origin : 'https://your-app.vercel.app';
+
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-white font-sans">
-        <div className="max-w-4xl w-full space-y-8 animate-in fade-in zoom-in-95 duration-300">
+        <div className="max-w-5xl w-full space-y-8 animate-in fade-in zoom-in-95 duration-300">
            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
              
              {/* Back Button */}
@@ -69,7 +71,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
                     1. Project URL
                   </h3>
                   <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wide">Connect &gt; Project URL</p>
-                  <div className="bg-slate-950 rounded px-2 py-2 text-xs text-slate-400 font-mono break-all border border-slate-800 select-all mt-auto">
+                  <div className="bg-slate-950 rounded px-2 py-2 text-xs text-slate-400 font-mono break-all border border-slate-800 select-all mt-auto group relative">
                     https://your-project.supabase.co
                   </div>
                </div>
@@ -85,14 +87,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
                   </div>
                </div>
 
-               <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 flex flex-col ring-1 ring-yellow-500/30">
+               <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 flex flex-col ring-1 ring-yellow-500/30 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-1.5 bg-yellow-500/10 rounded-bl-lg border-b border-l border-yellow-500/20">
+                    <AlertCircle size={12} className="text-yellow-500" />
+                  </div>
                   <h3 className="font-semibold text-slate-200 flex items-center gap-2 mb-2">
                     <Globe size={16} className="text-yellow-400" />
                     3. Auth URL
                   </h3>
                   <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wide">Auth &gt; URL Configuration</p>
-                  <div className="text-xs text-slate-300 leading-relaxed mt-auto">
-                    Add your Vercel URL to <strong>Site URL</strong> and <strong>Redirect URLs</strong> to prevent localhost errors.
+                  <div className="text-xs text-slate-400 mb-2">
+                    Paste this into <strong>Site URL</strong> and <strong>Redirect URLs</strong>:
+                  </div>
+                  <div className="bg-slate-950 rounded px-2 py-2 text-xs text-slate-300 font-mono break-all border border-slate-800 select-all mt-auto flex justify-between items-center gap-2">
+                    <span>{currentUrl}</span>
                   </div>
                </div>
              </div>
@@ -148,6 +156,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
                <p className="text-slate-600 dark:text-slate-300">
                  <strong>Using Free Tier?</strong> Supabase limits emails to 3 per hour. Check your Logs if it fails.
                </p>
+             </div>
+             <div className="flex gap-2">
+                <Globe size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+                <p className="text-slate-600 dark:text-slate-300">
+                  <strong>Redirecting to localhost?</strong> Go to Supabase &gt; Authentication &gt; URL Configuration and add 
+                  <code className="mx-1 bg-slate-200 dark:bg-slate-700 px-1 rounded text-xs">{window.location.origin}</code> 
+                  to the Site URL.
+                </p>
              </div>
           </div>
 
