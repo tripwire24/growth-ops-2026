@@ -16,15 +16,21 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'kanban' | 'vault' | 'analytics'>('kanban');
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewingSetup, setViewingSetup] = useState(false);
 
-  // If Supabase is configured, enforce login
-  if (isSupabaseConfigured && !authLoading && !user) {
+  // 1. Loading State
+  if (isSupabaseConfigured && authLoading) {
+      return <div className="h-screen w-screen flex items-center justify-center bg-slate-900 text-white">Loading Growth Ops...</div>;
+  }
+
+  // 2. Auth Enforced (Only if configured and not loading)
+  if (isSupabaseConfigured && !user) {
     return <AuthPage />;
   }
 
-  // Loading state
-  if (isSupabaseConfigured && authLoading) {
-      return <div className="h-screen w-screen flex items-center justify-center bg-slate-900 text-white">Loading Growth Ops...</div>;
+  // 3. Setup/Connect Screen (Triggered manually from Mock Mode)
+  if (!isSupabaseConfigured && viewingSetup) {
+    return <AuthPage onBackToDemo={() => setViewingSetup(false)} />;
   }
 
   const handleNewExperiment = () => {
@@ -53,6 +59,8 @@ export default function App() {
       activeTab={activeTab} 
       setActiveTab={setActiveTab}
       onNewExperiment={handleNewExperiment}
+      isMockMode={!isSupabaseConfigured}
+      onConnect={() => setViewingSetup(true)}
     >
       {activeTab === 'kanban' && (
         <KanbanBoard 

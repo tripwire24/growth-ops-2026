@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { isSupabaseConfigured } from '../services/supabase';
-import { Lock, Mail, ArrowRight, AlertCircle, Database, Settings, Key } from 'lucide-react';
+import { Lock, Mail, ArrowRight, AlertCircle, Database, Settings, Key, ArrowLeft, ExternalLink } from 'lucide-react';
 
-export const AuthPage: React.FC = () => {
+interface AuthPageProps {
+  onBackToDemo?: () => void;
+}
+
+export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,8 +30,20 @@ export const AuthPage: React.FC = () => {
   if (!isSupabaseConfigured) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-white font-sans">
-        <div className="max-w-2xl w-full space-y-8">
-           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-6 shadow-2xl">
+        <div className="max-w-2xl w-full space-y-8 animate-in fade-in zoom-in-95 duration-300">
+           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+             
+             {/* Back Button */}
+             {onBackToDemo && (
+                <button 
+                  onClick={onBackToDemo}
+                  className="absolute top-4 left-4 text-slate-400 hover:text-white flex items-center gap-1 text-sm font-medium transition-colors"
+                >
+                  <ArrowLeft size={16} />
+                  Back to Demo
+                </button>
+             )}
+
              <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center mx-auto ring-4 ring-indigo-500/10">
                <Database size={32} />
              </div>
@@ -45,8 +61,8 @@ export const AuthPage: React.FC = () => {
                     <Settings size={16} className="text-indigo-400" />
                     1. Get Project URL
                   </h3>
-                  <p className="text-xs text-slate-500 mb-3">Go to Settings &gt; API</p>
-                  <div className="bg-slate-950 rounded px-2 py-1.5 text-xs text-slate-400 font-mono break-all border border-slate-800">
+                  <p className="text-xs text-slate-500 mb-3">Supabase Top Right &gt; Connect &gt; Project URL</p>
+                  <div className="bg-slate-950 rounded px-2 py-1.5 text-xs text-slate-400 font-mono break-all border border-slate-800 select-all">
                     https://your-project.supabase.co
                   </div>
                </div>
@@ -54,27 +70,34 @@ export const AuthPage: React.FC = () => {
                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
                   <h3 className="font-semibold text-slate-200 flex items-center gap-2 mb-2">
                     <Key size={16} className="text-indigo-400" />
-                    2. Get Anon Key
+                    2. Get Publishable Key
                   </h3>
-                  <p className="text-xs text-slate-500 mb-3">Go to Settings &gt; API</p>
-                  <div className="bg-slate-950 rounded px-2 py-1.5 text-xs text-slate-400 font-mono break-all border border-slate-800">
-                    eyJhbGciOiJIUzI1NiIsInR5...
+                  <p className="text-xs text-slate-500 mb-3">Supabase Top Right &gt; Connect &gt; Publishable Key</p>
+                  <div className="bg-slate-950 rounded px-2 py-1.5 text-xs text-slate-400 font-mono break-all border border-slate-800 select-all">
+                    sb_publishable_... OR eyJhbGci...
                   </div>
                </div>
              </div>
 
-             <div className="bg-yellow-900/10 border border-yellow-800/30 rounded-lg p-4 flex gap-3 text-left">
-               <AlertCircle size={20} className="text-yellow-600 shrink-0" />
+             <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-4 flex gap-3 text-left">
+               <ExternalLink size={20} className="text-indigo-400 shrink-0 mt-0.5" />
                <div className="text-sm">
-                 <p className="text-yellow-500 font-medium">Running in Mock Mode</p>
-                 <p className="text-yellow-500/60 mt-0.5">
-                   Add <code className="text-yellow-500">VITE_SUPABASE_URL</code> and <code className="text-yellow-500">VITE_SUPABASE_ANON_KEY</code> to your environment variables to connect.
-                 </p>
+                 <p className="text-indigo-300 font-medium">Add to Vercel Environment Variables</p>
+                 <div className="mt-2 space-y-2 font-mono text-xs">
+                    <div className="flex gap-2">
+                        <span className="text-slate-500 select-none">Key:</span>
+                        <span className="text-yellow-400">VITE_SUPABASE_URL</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <span className="text-slate-500 select-none">Key:</span>
+                        <span className="text-yellow-400">VITE_SUPABASE_ANON_KEY</span>
+                    </div>
+                 </div>
                </div>
              </div>
 
-             <button onClick={() => window.location.reload()} className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors border border-slate-700">
-               Reload Page
+             <button onClick={() => window.location.reload()} className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors border border-slate-700 w-full sm:w-auto">
+               I've Updated My Keys (Reload)
              </button>
           </div>
         </div>
