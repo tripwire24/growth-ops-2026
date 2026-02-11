@@ -28,8 +28,11 @@ export function useAuth() {
 
   const signIn = async (email: string) => {
     if (!supabase) return;
-    // For simplicity in this demo, we'll use Magic Links
-    // But in a real app, you might use signInWithPassword
+    
+    // Debugging info for the developer
+    console.log('Sending magic link to:', email);
+    console.log('Redirect URL:', window.location.origin);
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {

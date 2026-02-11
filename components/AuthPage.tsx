@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { isSupabaseConfigured } from '../services/supabase';
-import { Lock, Mail, ArrowRight, AlertCircle, Database, Settings, Key, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Mail, ArrowRight, AlertCircle, Database, Settings, Key, ArrowLeft, ExternalLink, CheckCircle, RefreshCw } from 'lucide-react';
 
 interface AuthPageProps {
   onBackToDemo?: () => void;
@@ -11,22 +11,29 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [isSent, setIsSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
+    setError(null);
     try {
       await signIn(email);
-      setMessage({ type: 'success', text: 'Magic link sent! Check your email to login.' });
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to send login link' });
+      setIsSent(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send login link');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRetry = () => {
+    setIsSent(false);
+    setError(null);
+  };
+
+  // 1. SETUP INSTRUCTIONS (If no keys)
   if (!isSupabaseConfigured) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-white font-sans">
@@ -105,6 +112,47 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
     );
   }
 
+  // 2. EMAIL SENT STATE
+  if (isSent) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden p-8 text-center animate-in fade-in zoom-in-95">
+          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Check your email</h2>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
+            We've sent a magic link to <span className="font-semibold text-slate-900 dark:text-slate-200">{email}</span>
+          </p>
+          
+          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 text-left text-sm space-y-3 mb-6 border border-slate-100 dark:border-slate-700">
+             <div className="flex gap-2">
+               <AlertCircle size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+               <p className="text-slate-600 dark:text-slate-300">
+                 <strong>Not receiving it?</strong> Check your Spam folder.
+               </p>
+             </div>
+             <div className="flex gap-2">
+               <AlertCircle size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+               <p className="text-slate-600 dark:text-slate-300">
+                 <strong>Using Free Tier?</strong> Supabase limits emails to 3 per hour. Check your Supabase Dashboard Logs if it fails.
+               </p>
+             </div>
+          </div>
+
+          <button 
+            onClick={handleRetry}
+            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium text-sm flex items-center justify-center gap-2 mx-auto"
+          >
+            <RefreshCw size={14} />
+            Try another email
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. LOGIN FORM
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden">
@@ -133,10 +181,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
               </div>
             </div>
 
-            {message && (
-              <div className={`p-3 rounded-lg flex items-start gap-2 text-sm ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'}`}>
+            {error && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg flex items-start gap-2 text-sm">
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                <span>{message.text}</span>
+                <span>{error}</span>
               </div>
             )}
 
