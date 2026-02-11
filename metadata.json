@@ -1,0 +1,5 @@
+{
+  "name": "Growth Ops PWA",
+  "description": "A high-performance experiment management system with Kanban and Vault views, featuring ICE scoring and comprehensive filtering.",
+  "requestFramePermissions": []
+}
