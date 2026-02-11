@@ -12,7 +12,13 @@ import { Experiment } from './types';
 
 export default function GrowthApp() {
   const { user, loading: authLoading } = useAuth();
-  const { experiments, updateStatus, updateExperiment, addExperiment, archiveExperiment, completeExperiment } = useExperiments();
+  
+  // State for Guest/Demo Mode
+  const [isGuestMode, setIsGuestMode] = useState(false);
+
+  // Pass Guest Mode flag to hooks to force mock data usage
+  const { experiments, updateStatus, updateExperiment, addExperiment, archiveExperiment, completeExperiment } = useExperiments(isGuestMode);
+  
   const [activeTab, setActiveTab] = useState<'kanban' | 'vault' | 'analytics'>('kanban');
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -33,9 +39,9 @@ export default function GrowthApp() {
       );
   }
 
-  // 2. Auth Enforced (Only if configured and not loading)
-  if (isSupabaseConfigured && !user) {
-    return <AuthPage />;
+  // 2. Auth Enforced (Only if configured, not loading, and NOT in guest mode)
+  if (isSupabaseConfigured && !user && !isGuestMode) {
+    return <AuthPage onContinueAsGuest={() => setIsGuestMode(true)} />;
   }
 
   // 3. Setup/Connect Screen (Triggered manually from Mock Mode)
@@ -71,7 +77,7 @@ export default function GrowthApp() {
       activeTab={activeTab} 
       setActiveTab={setActiveTab}
       onNewExperiment={handleNewExperiment}
-      isMockMode={!isSupabaseConfigured}
+      isMockMode={!isSupabaseConfigured || isGuestMode}
       onConnect={() => setViewingSetup(true)}
     >
       {activeTab === 'kanban' && (

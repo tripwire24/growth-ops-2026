@@ -4,14 +4,15 @@ import { INITIAL_EXPERIMENTS } from '../services/mockData';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { useAuth } from './useAuth';
 
-export function useExperiments() {
+export function useExperiments(isDemoMode: boolean = false) {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
   // Fetch Experiments
   const fetchExperiments = useCallback(async () => {
-    if (!isSupabaseConfigured || !supabase) {
+    // Force mock data if Demo Mode is active, or if Supabase isn't configured/ready
+    if (isDemoMode || !isSupabaseConfigured || !supabase) {
       setExperiments(INITIAL_EXPERIMENTS);
       setLoading(false);
       return;
@@ -50,13 +51,13 @@ export function useExperiments() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isDemoMode]);
 
   useEffect(() => {
     fetchExperiments();
     
     // Optional: Realtime subscription could go here
-    if (isSupabaseConfigured && supabase) {
+    if (!isDemoMode && isSupabaseConfigured && supabase) {
         const subscription = supabase
             .channel('public:experiments')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'experiments' }, fetchExperiments)
@@ -66,7 +67,7 @@ export function useExperiments() {
             supabase.removeChannel(subscription);
         }
     }
-  }, [fetchExperiments]);
+  }, [fetchExperiments, isDemoMode]);
 
   const updateStatus = useCallback(async (id: string, newStatus: ExperimentStatus) => {
     // Optimistic Update
@@ -74,39 +75,39 @@ export function useExperiments() {
       exp.id === id ? { ...exp, status: newStatus } : exp
     ));
 
-    if (isSupabaseConfigured && supabase) {
+    if (!isDemoMode && isSupabaseConfigured && supabase) {
         await supabase.from('experiments').update({ status: newStatus }).eq('id', id);
     }
-  }, []);
+  }, [isDemoMode]);
 
   const updateExperiment = useCallback(async (updatedExp: Experiment) => {
     setExperiments(prev => prev.map(exp => 
       exp.id === updatedExp.id ? updatedExp : exp
     ));
 
-    if (isSupabaseConfigured && supabase) {
+    if (!isDemoMode && isSupabaseConfigured && supabase) {
         const { owner, comments, ...dbPayload } = updatedExp;
         await supabase.from('experiments').update(dbPayload).eq('id', updatedExp.id);
     }
-  }, []);
+  }, [isDemoMode]);
 
   const archiveExperiment = useCallback(async (id: string) => {
     setExperiments(prev => prev.map(exp => 
       exp.id === id ? { ...exp, status: 'learnings', archived: true } : exp
     ));
-    if (isSupabaseConfigured && supabase) {
+    if (!isDemoMode && isSupabaseConfigured && supabase) {
         await supabase.from('experiments').update({ status: 'learnings', archived: true }).eq('id', id);
     }
-  }, []);
+  }, [isDemoMode]);
 
   const completeExperiment = useCallback(async (id: string) => {
     setExperiments(prev => prev.map(exp => 
         exp.id === id ? { ...exp, status: 'learnings', archived: true, locked: true } : exp
     ));
-    if (isSupabaseConfigured && supabase) {
+    if (!isDemoMode && isSupabaseConfigured && supabase) {
         await supabase.from('experiments').update({ status: 'learnings', archived: true, locked: true }).eq('id', id);
     }
-  }, []);
+  }, [isDemoMode]);
 
   const addExperiment = useCallback(async (experiment: Omit<Experiment, 'id' | 'created_at' | 'archived' | 'result' | 'owner' | 'comments' | 'tags' | 'locked'>) => {
     // Generate Temp ID for UI
@@ -126,7 +127,7 @@ export function useExperiments() {
 
     setExperiments(prev => [newExp, ...prev]);
 
-    if (isSupabaseConfigured && supabase && user) {
+    if (!isDemoMode && isSupabaseConfigured && supabase && user) {
         // Insert into DB
         const { data, error } = await supabase.from('experiments').insert([{
             ...experiment,
@@ -141,7 +142,7 @@ export function useExperiments() {
             fetchExperiments();
         }
     }
-  }, [user, fetchExperiments]);
+  }, [user, fetchExperiments, isDemoMode]);
 
   const addComment = useCallback(async (experimentId: string, text: string) => {
     // Optimistic
@@ -160,14 +161,14 @@ export function useExperiments() {
       return exp;
     }));
 
-    if (isSupabaseConfigured && supabase && user) {
+    if (!isDemoMode && isSupabaseConfigured && supabase && user) {
         await supabase.from('comments').insert({
             experiment_id: experimentId,
             user_id: user.id,
             text: text
         });
     }
-  }, [user]);
+  }, [user, isDemoMode]);
 
   return {
     experiments,

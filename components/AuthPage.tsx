@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { isSupabaseConfigured } from '../services/supabase';
-import { Mail, Lock, ArrowRight, AlertCircle, Database, Settings, Key, ArrowLeft, ExternalLink, CheckCircle, RefreshCw, Globe, Wand2, UserPlus, LogIn } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, Database, Settings, Key, ArrowLeft, ExternalLink, CheckCircle, RefreshCw, Globe, Wand2, UserPlus, LogIn, LayoutTemplate } from 'lucide-react';
 
 interface AuthPageProps {
   onBackToDemo?: () => void;
+  onContinueAsGuest?: () => void;
 }
 
-export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
+export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo, onContinueAsGuest }) => {
   const { signInWithPassword, signUp, signInWithMagicLink } = useAuth();
   
   // UI State
@@ -260,7 +261,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
               </button>
             </div>
           )}
-
            {authMode === 'magic' && (
              <button 
                 onClick={() => { setAuthMode('signin'); setError(null); }}
@@ -269,6 +269,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo }) => {
                 Use Password
               </button>
            )}
+           
+           {/* GUEST MODE BUTTON */}
+           {onContinueAsGuest && authMode !== 'magic' && (
+             <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+               <button 
+                 onClick={onContinueAsGuest}
+                 className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 group"
+               >
+                 <LayoutTemplate size={16} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                 Skip Login (Try Demo Mode)
+               </button>
+             </div>
+           )}
+
         </div>
       </div>
     </div>
