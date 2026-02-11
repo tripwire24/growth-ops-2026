@@ -1,5 +1,7 @@
+
 import React, { useEffect, useState } from 'react';
-import { Layers, Database, Plus, Menu, User, BarChart2, Moon, Sun, AlertTriangle } from 'lucide-react';
+import { Layers, Database, Plus, Menu, User, BarChart2, Moon, Sun, AlertTriangle, Layout as LayoutIcon, Settings, ChevronRight } from 'lucide-react';
+import { Board } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,6 +10,12 @@ interface LayoutProps {
   onNewExperiment: () => void;
   isMockMode?: boolean;
   onConnect?: () => void;
+  // Board Props
+  boards: Board[];
+  activeBoardId: string;
+  onSwitchBoard: (id: string) => void;
+  onCreateBoard: () => void;
+  onEditBoard: (board: Board) => void;
 }
 
 const ThemeToggle = () => {
@@ -42,16 +50,22 @@ const ThemeToggle = () => {
   );
 };
 
-export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onNewExperiment, isMockMode, onConnect }) => {
+export const Layout: React.FC<LayoutProps> = ({ 
+  children, activeTab, setActiveTab, onNewExperiment, isMockMode, onConnect,
+  boards, activeBoardId, onSwitchBoard, onCreateBoard, onEditBoard
+}) => {
+  
+  const currentBoard = boards.find(b => b.id === activeBoardId);
+
   return (
     <div className="flex h-screen w-screen bg-slate-50 dark:bg-slate-950 overflow-hidden flex-col md:flex-row">
       
-      {/* Mock Mode Banner (Mobile Top / Desktop Top if needed, but sidebar handles desktop mostly) */}
+      {/* Mock Mode Banner */}
       {isMockMode && (
         <div className="bg-indigo-600 text-white text-xs font-medium px-4 py-2 flex justify-between items-center md:hidden shrink-0">
           <div className="flex items-center gap-2">
             <AlertTriangle size={14} className="text-indigo-200" />
-            <span>Demo Mode (Local Data)</span>
+            <span>Demo Mode</span>
           </div>
           <button onClick={onConnect} className="bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-[10px] uppercase tracking-wide border border-white/20">
             Connect DB
@@ -70,29 +84,59 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           </div>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2">
+        {/* Board Switcher Section */}
+        <div className="px-4 pt-6 pb-2">
+           <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+             <span>Boards</span>
+             <button onClick={onCreateBoard} className="text-indigo-400 hover:text-indigo-300">
+               <Plus size={14} />
+             </button>
+           </div>
+           <div className="space-y-1">
+             {boards.map(board => (
+               <div key={board.id} className="group flex items-center gap-2">
+                 <button 
+                  onClick={() => onSwitchBoard(board.id)}
+                  className={`flex-1 text-left px-2 py-1.5 rounded text-sm transition-colors truncate flex items-center gap-2 ${activeBoardId === board.id ? 'bg-slate-800 text-white font-medium' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'}`}
+                 >
+                   <span className={`w-1.5 h-1.5 rounded-full ${activeBoardId === board.id ? 'bg-indigo-500' : 'bg-slate-600'}`}></span>
+                   {board.name}
+                 </button>
+                 <button 
+                   onClick={() => onEditBoard(board)}
+                   className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-white transition-opacity"
+                 >
+                   <Settings size={12} />
+                 </button>
+               </div>
+             ))}
+           </div>
+        </div>
+
+        <nav className="flex-1 px-4 py-2 space-y-2">
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-4 px-2">Views</div>
           <button 
             onClick={() => setActiveTab('kanban')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${activeTab === 'kanban' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'}`}
           >
-            <Layers size={20} />
-            <span className="font-medium">Board</span>
+            <Layers size={18} />
+            <span className="font-medium text-sm">Board</span>
           </button>
           
           <button 
             onClick={() => setActiveTab('vault')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${activeTab === 'vault' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'}`}
           >
-            <Database size={20} />
-            <span className="font-medium">Vault</span>
+            <Database size={18} />
+            <span className="font-medium text-sm">Vault</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('analytics')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${activeTab === 'analytics' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'}`}
           >
-            <BarChart2 size={20} />
-            <span className="font-medium">Analytics</span>
+            <BarChart2 size={18} />
+            <span className="font-medium text-sm">Analytics</span>
           </button>
         </nav>
 
@@ -133,10 +177,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         {/* Mobile Header */}
         <header className="md:hidden flex items-center justify-between p-4 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded flex items-center justify-center">
-              <span className="font-bold text-xs">G</span>
-            </div>
-            <span className="font-bold">Growth Ops</span>
+             <span className="font-bold text-sm bg-slate-800 px-2 py-1 rounded truncate max-w-[120px]">
+               {currentBoard?.name}
+             </span>
+             <ChevronRight size={14} className="text-slate-500" />
+             <span className="text-xs text-slate-400 uppercase tracking-wide">
+               {activeTab}
+             </span>
           </div>
           <div className="flex gap-2">
             <ThemeToggle />
@@ -170,9 +217,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
 
         {/* Toolbar Area */}
         <div className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 flex items-center justify-between shrink-0">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white hidden md:block">
-            {activeTab === 'kanban' ? 'Experiment Board' : activeTab === 'vault' ? 'Knowledge Vault' : 'Analytics Dashboard'}
-          </h2>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white hidden md:block">
+              {activeTab === 'kanban' ? currentBoard?.name : activeTab === 'vault' ? 'Knowledge Vault' : 'Analytics Dashboard'}
+            </h2>
+            {activeTab === 'kanban' && currentBoard?.description && (
+              <p className="text-xs text-slate-500 hidden md:block mt-0.5">{currentBoard.description}</p>
+            )}
+          </div>
+          
           <div className="flex gap-3 ml-auto">
              <button 
               onClick={onNewExperiment}

@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Experiment, ExperimentStatus, MARKETS, TYPES, STATUS_CONFIG, Comment } from '../types';
-import { X, Save, Archive, MessageSquare, Paperclip, Send, User, CheckCircle, Lock, Plus, Tag, AlertTriangle } from 'lucide-react';
+import { X, Save, Archive, MessageSquare, Paperclip, Send, User, CheckCircle, Lock, Plus, Tag, AlertTriangle, Trash2 } from 'lucide-react';
 
 interface ExperimentModalProps {
   experiment: Experiment | null;
@@ -9,9 +10,10 @@ interface ExperimentModalProps {
   onSave: (experiment: Experiment) => void;
   onArchive: (id: string) => void;
   onComplete: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
-export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, isOpen, onClose, onSave, onArchive, onComplete }) => {
+export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, isOpen, onClose, onSave, onArchive, onComplete, onDelete }) => {
   const [formData, setFormData] = useState<Experiment | null>(null);
   const [newComment, setNewComment] = useState('');
   const [tagInput, setTagInput] = useState('');
@@ -65,9 +67,15 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
   const showResultSelector = formData.status === 'complete' || isLearnings;
   const isLocked = formData.locked;
 
-  // Safety: Only allow archiving if it's an Idea (delete) or Complete. 
-  // Prevent archiving active experiments (Hypothesis, Running) to avoid accidents.
-  const canArchive = ['idea', 'complete'].includes(formData.status);
+  // Archive is ONLY for Learnings
+  const canArchive = isLearnings && !formData.archived && !formData.locked;
+
+  const handleDelete = () => {
+    if (confirm("Are you sure you want to permanently delete this card? This cannot be undone.")) {
+      onDelete(formData.id);
+      onClose();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -85,6 +93,12 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 text-xs font-medium">
                       <Lock size={10} /> Locked
                     </span>
+                  )}
+                  {/* Board Badge */}
+                  {formData.boardName && (
+                      <span className="text-[10px] uppercase bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded font-bold border border-indigo-100 dark:border-indigo-800">
+                        {formData.boardName}
+                      </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
@@ -283,7 +297,7 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                    <div className="flex-1 space-y-1">
                       <div className="flex justify-between items-baseline">
                          <span className="font-semibold text-slate-800 dark:text-slate-200">{comment.userName}</span>
-                         <span className="text-[10px] text-slate-400">{new Date(comment.timestamp).toLocaleDateString()}</span>
+                         <span className="text-xs text-slate-400">{new Date(comment.timestamp).toLocaleDateString()}</span>
                       </div>
                       <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{comment.text}</p>
                    </div>
@@ -317,21 +331,30 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                 </div>
               </div>
               
-              <div className="mt-4 flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="mt-4 flex flex-wrap justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800 gap-2">
                 {/* Workflow Actions */}
                 {!isLocked && (
                   <>
-                    {/* SAFEGUARD: Only show Archive if it is 'idea' (delete) or 'complete'. 
-                        Prevent accidental archiving for in-flight experiments. */}
-                    {canArchive && !formData.archived && (
+                    {/* Delete Button - Always available but guarded */}
+                    <button 
+                       onClick={handleDelete}
+                       className="flex items-center gap-1 text-red-500 hover:text-red-700 text-xs font-medium px-2 py-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                       title="Delete Permanently"
+                    >
+                       <Trash2 size={14} />
+                       Delete
+                    </button>
+                    
+                    {/* Archive - ONLY FOR LEARNINGS */}
+                    {canArchive && (
                         <button 
                           onClick={() => {
-                            if(confirm("Are you sure you want to archive this card?")) {
+                            if(confirm("Archive this experiment to the vault?")) {
                                 onArchive(formData.id);
                                 onClose();
                             }
                           }}
-                          className="flex items-center gap-2 text-orange-600 hover:text-orange-700 text-xs font-medium"
+                          className="flex items-center gap-2 text-orange-600 hover:text-orange-700 text-xs font-medium px-2 py-1 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded transition-colors"
                           title="Archive"
                         >
                           <Archive size={14} />
@@ -340,7 +363,7 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                     )}
                     
                     {/* Complete & Archive Action for Learnings */}
-                    {isLearnings && (
+                    {isLearnings && !formData.locked && !formData.archived && (
                        <button 
                           onClick={() => {
                              if(!formData.result) {
@@ -355,7 +378,7 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                           title="Finalize results and lock card"
                         >
                           <CheckCircle size={14} />
-                          Complete & Archive
+                          Complete
                         </button>
                     )}
                   </>
@@ -376,7 +399,7 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                         }}
                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium shadow-sm transition-colors"
                       >
-                        Save Changes
+                        Save
                       </button>
                     )}
                     {isLocked && (

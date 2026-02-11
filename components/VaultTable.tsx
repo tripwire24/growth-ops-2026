@@ -1,14 +1,16 @@
+
 import React, { useState, useMemo } from 'react';
 import { Experiment, MARKETS, TYPES, STATUS_CONFIG, ExperimentStatus, RESULT_CONFIG } from '../types';
 import { ICEBadge } from './ICEBadge';
-import { Search, Lock } from 'lucide-react';
+import { Search, Lock, Trash2 } from 'lucide-react';
 
 interface VaultTableProps {
   experiments: Experiment[];
   onEdit: (experiment: Experiment) => void;
+  onDelete: (id: string) => void;
 }
 
-export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit }) => {
+export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit, onDelete }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [resultFilter, setResultFilter] = useState<string>('all');
@@ -27,6 +29,13 @@ export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit }) =
       return matchesSearch && matchesStatus && matchesResult && matchesMarket && matchesType;
     });
   }, [experiments, searchTerm, statusFilter, resultFilter, marketFilter, typeFilter]);
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm("Are you sure you want to permanently delete this item?")) {
+        onDelete(id);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
@@ -93,6 +102,7 @@ export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit }) =
           <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider shadow-sm">
             <tr>
               <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Title</th>
+              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Board</th>
               <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Status</th>
               <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Outcome</th>
               <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">ICE Score</th>
@@ -111,6 +121,9 @@ export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit }) =
                     {exp.locked && <Lock size={12} className="text-slate-400" />}
                     {exp.archived && <span className="text-[10px] uppercase bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded">Archived</span>}
                   </div>
+                </td>
+                <td className="px-6 py-3">
+                  <span className="text-xs text-slate-500">{exp.boardName || '-'}</span>
                 </td>
                 <td className="px-6 py-3">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium border ${STATUS_CONFIG[exp.status].bg} ${STATUS_CONFIG[exp.status].color} ${STATUS_CONFIG[exp.status].border} dark:${STATUS_CONFIG[exp.status].darkBg} dark:${STATUS_CONFIG[exp.status].darkColor} dark:${STATUS_CONFIG[exp.status].darkBorder}`}>
@@ -134,19 +147,26 @@ export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit }) =
                 <td className="px-6 py-3 text-slate-500 dark:text-slate-400">
                   {new Date(exp.created_at).toLocaleDateString()}
                 </td>
-                <td className="px-6 py-3 text-right">
+                <td className="px-6 py-3 text-right flex justify-end gap-3 items-center">
                   <button 
                     onClick={() => onEdit(exp)}
                     className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 font-medium text-xs"
                   >
                     {exp.locked ? 'View' : 'Edit'}
                   </button>
+                   <button 
+                    onClick={(e) => handleDelete(e, exp.id)}
+                    className="text-slate-400 hover:text-red-600 transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </td>
               </tr>
             ))}
             {filteredExperiments.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-slate-400 dark:text-slate-500">
+                <td colSpan={9} className="px-6 py-12 text-center text-slate-400 dark:text-slate-500">
                   No experiments found matching filters.
                 </td>
               </tr>

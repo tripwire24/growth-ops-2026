@@ -1,14 +1,16 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { KanbanBoard } from './components/KanbanBoard';
 import { VaultTable } from './components/VaultTable';
 import { AnalyticsView } from './components/AnalyticsView';
 import { ExperimentModal } from './components/ExperimentModal';
+import { BoardModal } from './components/BoardModal';
 import { AuthPage } from './components/AuthPage';
 import { useExperiments } from './hooks/useExperiments';
 import { useAuth } from './hooks/useAuth';
 import { isSupabaseConfigured } from './services/supabase';
-import { Experiment } from './types';
+import { Experiment, Board } from './types';
 
 export default function GrowthApp() {
   const { user, loading: authLoading } = useAuth();
@@ -16,13 +18,27 @@ export default function GrowthApp() {
   // State for Guest/Demo Mode
   const [isGuestMode, setIsGuestMode] = useState(false);
 
-  // Pass Guest Mode flag to hooks to force mock data usage
-  const { experiments, updateStatus, updateExperiment, addExperiment, archiveExperiment, completeExperiment } = useExperiments(isGuestMode);
+  // Data Hook
+  const { experiments, boards, updateStatus, updateExperiment, addExperiment, archiveExperiment, deleteExperiment, completeExperiment, addBoard, updateBoard } = useExperiments(isGuestMode);
   
+  // UI State
   const [activeTab, setActiveTab] = useState<'kanban' | 'vault' | 'analytics'>('kanban');
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExperimentModalOpen, setIsExperimentModalOpen] = useState(false);
+  
+  // Board State
+  const [activeBoardId, setActiveBoardId] = useState<string>('');
+  const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
+  const [editingBoard, setEditingBoard] = useState<Board | undefined>(undefined);
+
   const [viewingSetup, setViewingSetup] = useState(false);
+
+  // Initialize Active Board
+  useEffect(() => {
+    if (boards.length > 0 && !activeBoardId) {
+        setActiveBoardId(boards[0].id);
+    }
+  }, [boards, activeBoardId]);
 
   // Debug log to confirm correct app is loaded
   useEffect(() => {
@@ -49,13 +65,21 @@ export default function GrowthApp() {
     return <AuthPage onBackToDemo={() => setViewingSetup(false)} />;
   }
 
+  // --- Handlers ---
+
   const handleNewExperiment = () => {
     // In a real app, this would open a modal with empty fields
     // For now, we'll auto-populate a template to speed up testing
     const title = prompt("Enter experiment title:");
     if (!title) return;
     
+    if (!activeBoardId) {
+        alert("Please create a board first.");
+        return;
+    }
+
     addExperiment({
+      board_id: activeBoardId,
       title,
       description: 'Describe your hypothesis...',
       status: 'idea',
@@ -69,8 +93,34 @@ export default function GrowthApp() {
 
   const openExperiment = (exp: Experiment) => {
     setSelectedExperiment(exp);
-    setIsModalOpen(true);
+    setIsExperimentModalOpen(true);
   };
+
+  const handleCreateBoard = () => {
+      setEditingBoard(undefined);
+      setIsBoardModalOpen(true);
+  };
+
+  const handleEditBoard = (board: Board) => {
+      setEditingBoard(board);
+      setIsBoardModalOpen(true);
+  };
+
+  const handleSaveBoard = (name: string, description: string) => {
+      if (editingBoard) {
+          updateBoard(editingBoard.id, name, description);
+      } else {
+          const newId = addBoard(name, description);
+          setActiveBoardId(newId);
+      }
+  };
+
+  // Filter experiments for Kanban view based on Board
+  // For Vault and Analytics, we might want to show all or filter? 
+  // User req: "When items are in the vault, it should indicate which board they are from."
+  // This implies Vault shows ALL items usually, but let's stick to filtering Kanban strictly.
+  
+  const boardExperiments = experiments.filter(e => e.board_id === activeBoardId);
 
   return (
     <Layout 
@@ -79,10 +129,16 @@ export default function GrowthApp() {
       onNewExperiment={handleNewExperiment}
       isMockMode={!isSupabaseConfigured || isGuestMode}
       onConnect={() => setViewingSetup(true)}
+      // Board Props
+      boards={boards}
+      activeBoardId={activeBoardId}
+      onSwitchBoard={setActiveBoardId}
+      onCreateBoard={handleCreateBoard}
+      onEditBoard={handleEditBoard}
     >
       {activeTab === 'kanban' && (
         <KanbanBoard 
-          experiments={experiments} 
+          experiments={boardExperiments} 
           onStatusUpdate={updateStatus}
           onCardClick={openExperiment}
           onArchive={archiveExperiment}
@@ -92,23 +148,33 @@ export default function GrowthApp() {
       {activeTab === 'vault' && (
         <div className="p-6 h-full overflow-hidden">
           <VaultTable 
-            experiments={experiments} 
+            experiments={experiments} // Show all experiments in Vault
             onEdit={openExperiment}
+            onDelete={deleteExperiment}
           />
         </div>
       )}
 
       {activeTab === 'analytics' && (
-        <AnalyticsView experiments={experiments} />
+        <AnalyticsView experiments={experiments} /> // Show aggregate analytics
       )}
 
+      {/* Modals */}
       <ExperimentModal 
         experiment={selectedExperiment}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isExperimentModalOpen}
+        onClose={() => setIsExperimentModalOpen(false)}
         onSave={updateExperiment}
         onArchive={archiveExperiment}
         onComplete={completeExperiment}
+        onDelete={deleteExperiment}
+      />
+
+      <BoardModal 
+        isOpen={isBoardModalOpen}
+        onClose={() => setIsBoardModalOpen(false)}
+        onSave={handleSaveBoard}
+        initialBoard={editingBoard}
       />
     </Layout>
   );

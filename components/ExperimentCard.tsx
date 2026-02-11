@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Experiment, STATUS_CONFIG, RESULT_CONFIG } from '../types';
 import { ICEBadge } from './ICEBadge';
@@ -102,7 +103,12 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({ experiment, onDr
         owner={experiment.owner}
       />
       
-      {/* Archive Action for Learnings Column - Only show if not already locked/archived */}
+      {/* 
+        ARCHIVE BUTTON RULE:
+        - Only if Status == 'learnings'
+        - Not Locked
+        - Not already archived
+      */}
       {experiment.status === 'learnings' && !experiment.locked && !experiment.archived && (
         <button 
           onClick={(e) => {

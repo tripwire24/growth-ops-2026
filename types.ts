@@ -1,5 +1,13 @@
+
 export type ExperimentStatus = 'idea' | 'hypothesis' | 'running' | 'complete' | 'learnings';
 export type ExperimentResult = 'won' | 'lost' | 'inconclusive' | null;
+
+export interface Board {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+}
 
 export interface Comment {
   id: string;
@@ -12,6 +20,7 @@ export interface Comment {
 
 export interface Experiment {
   id: string;
+  board_id: string; // Link to Board
   title: string;
   description: string;
   status: ExperimentStatus;
@@ -25,8 +34,10 @@ export interface Experiment {
   archived: boolean;
   locked: boolean;
   result: ExperimentResult;
-  owner: string; // Name of the owner
+  owner: string; 
   comments: Comment[];
+  // UI Helper
+  boardName?: string;
 }
 
 export const STATUS_CONFIG: Record<ExperimentStatus, { label: string; color: string; bg: string; border: string; darkColor: string; darkBg: string; darkBorder: string }> = {

@@ -1,8 +1,25 @@
-import { Experiment } from '../types';
+
+import { Experiment, Board } from '../types';
+
+export const INITIAL_BOARDS: Board[] = [
+  {
+    id: 'b1',
+    name: 'Growth Team',
+    description: 'Main experiment board for the core growth team.',
+    created_at: '2023-01-01T00:00:00Z'
+  },
+  {
+    id: 'b2',
+    name: 'Marketing Alpha',
+    description: 'Experiments related to paid acquisition and socials.',
+    created_at: '2023-02-15T00:00:00Z'
+  }
+];
 
 export const INITIAL_EXPERIMENTS: Experiment[] = [
   {
     id: '1',
+    board_id: 'b1',
     title: 'Referral Program v2',
     description: 'Double sided rewards for high LTV users.',
     status: 'idea',
@@ -23,6 +40,7 @@ export const INITIAL_EXPERIMENTS: Experiment[] = [
   },
   {
     id: '2',
+    board_id: 'b1',
     title: 'Onboarding Checklist',
     description: 'Add a gamified checklist to the dashboard.',
     status: 'hypothesis',
@@ -41,6 +59,7 @@ export const INITIAL_EXPERIMENTS: Experiment[] = [
   },
   {
     id: '3',
+    board_id: 'b1',
     title: 'Pricing Page A/B Test',
     description: 'Testing annual vs monthly toggle default.',
     status: 'running',
@@ -59,6 +78,7 @@ export const INITIAL_EXPERIMENTS: Experiment[] = [
   },
   {
     id: '4',
+    board_id: 'b1',
     title: 'Dark Mode Release',
     description: 'Full dark mode support for power users.',
     status: 'complete',
@@ -79,6 +99,7 @@ export const INITIAL_EXPERIMENTS: Experiment[] = [
   },
   {
     id: '5',
+    board_id: 'b2',
     title: 'Email Drip Optimization',
     description: 'Shorten the sequence from 7 days to 3 days.',
     status: 'learnings',
@@ -97,6 +118,7 @@ export const INITIAL_EXPERIMENTS: Experiment[] = [
   },
   {
     id: '6',
+    board_id: 'b2',
     title: 'Influencer Campaign',
     description: 'Partner with top 5 tech YouTubers.',
     status: 'idea',
