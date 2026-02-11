@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import { Layers, Database, Plus, Menu, User, BarChart2, Moon, Sun, AlertTriangle, Layout as LayoutIcon, Settings, ChevronRight, LogOut } from 'lucide-react';
 import { Board, UserProfile } from '../types';
-import { useAuth } from '../hooks/useAuth';
 import { ProfileModal } from './ProfileModal';
 
 interface LayoutProps {
@@ -18,6 +17,10 @@ interface LayoutProps {
   onSwitchBoard: (id: string) => void;
   onCreateBoard: () => void;
   onEditBoard: (board: Board) => void;
+  // Profile Props
+  userProfile: UserProfile | null;
+  onUpdateProfile: (name: string, avatar: string) => Promise<void>;
+  onLogout: () => void;
 }
 
 const ThemeToggle = () => {
@@ -54,15 +57,15 @@ const ThemeToggle = () => {
 
 export const Layout: React.FC<LayoutProps> = ({ 
   children, activeTab, setActiveTab, onNewExperiment, isMockMode, onConnect,
-  boards, activeBoardId, onSwitchBoard, onCreateBoard, onEditBoard
+  boards, activeBoardId, onSwitchBoard, onCreateBoard, onEditBoard,
+  userProfile, onUpdateProfile, onLogout
 }) => {
   
   const currentBoard = boards.find(b => b.id === activeBoardId);
-  const { profile, signOut, updateProfile } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const displayName = profile?.full_name || (isMockMode ? 'Guest User' : 'Set your name');
-  const displayStatus = isMockMode ? 'Demo Mode' : (profile?.full_name ? 'Online' : 'Incomplete Profile');
+  const displayName = userProfile?.full_name || (isMockMode ? 'Guest User' : 'Set your name');
+  const displayStatus = isMockMode ? 'Demo Mode' : (userProfile?.full_name ? 'Online' : 'Incomplete Profile');
 
   return (
     <div className="flex h-screen w-screen bg-slate-50 dark:bg-slate-950 overflow-hidden flex-col md:flex-row">
@@ -171,8 +174,8 @@ export const Layout: React.FC<LayoutProps> = ({
              className="flex-1 flex items-center gap-3 text-slate-400 hover:text-white transition-colors text-left group"
            >
              <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0 overflow-hidden border border-slate-600 group-hover:border-indigo-500 transition-colors">
-               {profile?.avatar_url ? (
-                 <img src={profile.avatar_url} alt="Av" className="w-full h-full object-cover" />
+               {userProfile?.avatar_url ? (
+                 <img src={userProfile.avatar_url} alt="Av" className="w-full h-full object-cover" />
                ) : (
                  <User size={16} />
                )}
@@ -189,7 +192,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <ThemeToggle />
           
           <button 
-             onClick={signOut}
+             onClick={onLogout}
              className="p-2 text-slate-400 hover:text-red-400 transition-colors"
              title="Log Out"
           >
@@ -253,6 +256,9 @@ export const Layout: React.FC<LayoutProps> = ({
             {activeTab === 'kanban' && currentBoard?.description && (
               <p className="text-xs text-slate-500 hidden md:block mt-0.5">{currentBoard.description}</p>
             )}
+             {(activeTab === 'vault' || activeTab === 'analytics') && currentBoard && (
+               <p className="text-xs text-slate-500 hidden md:block mt-0.5">Filtered by: <span className="font-semibold">{currentBoard.name}</span></p>
+            )}
           </div>
           
           <div className="flex gap-3 ml-auto">
@@ -277,9 +283,9 @@ export const Layout: React.FC<LayoutProps> = ({
       <ProfileModal 
         isOpen={isProfileOpen} 
         onClose={() => setIsProfileOpen(false)}
-        profile={profile}
-        onSave={updateProfile}
-        onLogout={signOut}
+        profile={userProfile}
+        onSave={onUpdateProfile}
+        onLogout={onLogout}
       />
     </div>
   );

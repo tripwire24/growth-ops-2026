@@ -10,16 +10,25 @@ import { AuthPage } from './components/AuthPage';
 import { useExperiments } from './hooks/useExperiments';
 import { useAuth } from './hooks/useAuth';
 import { isSupabaseConfigured } from './services/supabase';
-import { Experiment, Board } from './types';
+import { Experiment, Board, UserProfile } from './types';
 
 export default function GrowthApp() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile: authProfile, loading: authLoading, updateProfile: updateAuthProfile, signOut } = useAuth();
   
   // State for Guest/Demo Mode
   const [isGuestMode, setIsGuestMode] = useState(false);
+  const [guestProfile, setGuestProfile] = useState<UserProfile>({
+    id: 'guest',
+    email: 'guest@demo.com',
+    full_name: 'Guest User',
+    avatar_url: ''
+  });
 
-  // Data Hook
-  const { experiments, boards, updateStatus, updateExperiment, addExperiment, archiveExperiment, deleteExperiment, completeExperiment, addBoard, updateBoard } = useExperiments(isGuestMode);
+  // Determine active profile (Auth or Guest)
+  const activeProfile = isGuestMode ? guestProfile : authProfile;
+
+  // Data Hook - Now accepts the active profile for attribution
+  const { experiments, boards, updateStatus, updateExperiment, addExperiment, archiveExperiment, deleteExperiment, completeExperiment, addBoard, updateBoard } = useExperiments(isGuestMode, activeProfile);
   
   // UI State
   const [activeTab, setActiveTab] = useState<'kanban' | 'vault' | 'analytics'>('kanban');
@@ -67,9 +76,23 @@ export default function GrowthApp() {
 
   // --- Handlers ---
 
+  const handleUpdateProfile = async (name: string, avatar: string) => {
+    if (isGuestMode) {
+      setGuestProfile(prev => ({ ...prev, full_name: name, avatar_url: avatar }));
+    } else {
+      await updateAuthProfile(name, avatar);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (isGuestMode) {
+      setIsGuestMode(false);
+    } else {
+      await signOut();
+    }
+  };
+
   const handleNewExperiment = () => {
-    // In a real app, this would open a modal with empty fields
-    // For now, we'll auto-populate a template to speed up testing
     const title = prompt("Enter experiment title:");
     if (!title) return;
     
@@ -115,11 +138,7 @@ export default function GrowthApp() {
       }
   };
 
-  // Filter experiments for Kanban view based on Board
-  // For Vault and Analytics, we might want to show all or filter? 
-  // User req: "When items are in the vault, it should indicate which board they are from."
-  // This implies Vault shows ALL items usually, but let's stick to filtering Kanban strictly.
-  
+  // Filter experiments for ALL views based on Board
   const boardExperiments = experiments.filter(e => e.board_id === activeBoardId);
 
   return (
@@ -135,6 +154,10 @@ export default function GrowthApp() {
       onSwitchBoard={setActiveBoardId}
       onCreateBoard={handleCreateBoard}
       onEditBoard={handleEditBoard}
+      // Profile Props
+      userProfile={activeProfile}
+      onUpdateProfile={handleUpdateProfile}
+      onLogout={handleLogout}
     >
       {activeTab === 'kanban' && (
         <KanbanBoard 
@@ -148,7 +171,7 @@ export default function GrowthApp() {
       {activeTab === 'vault' && (
         <div className="p-6 h-full overflow-hidden">
           <VaultTable 
-            experiments={experiments} // Show all experiments in Vault
+            experiments={boardExperiments} // PASSING FILTERED LIST
             onEdit={openExperiment}
             onDelete={deleteExperiment}
           />
@@ -156,7 +179,7 @@ export default function GrowthApp() {
       )}
 
       {activeTab === 'analytics' && (
-        <AnalyticsView experiments={experiments} /> // Show aggregate analytics
+        <AnalyticsView experiments={boardExperiments} /> // PASSING FILTERED LIST
       )}
 
       {/* Modals */}

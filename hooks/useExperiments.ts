@@ -1,15 +1,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { Experiment, ExperimentStatus, Comment, Board } from '../types';
+import { Experiment, ExperimentStatus, Comment, Board, UserProfile } from '../types';
 import { INITIAL_EXPERIMENTS, INITIAL_BOARDS } from '../services/mockData';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { useAuth } from './useAuth';
 
-export function useExperiments(isDemoMode: boolean = false) {
+export function useExperiments(isDemoMode: boolean = false, userProfile: UserProfile | null = null) {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, profile } = useAuth();
+  const { user } = useAuth(); // Still need auth user for ID in real mode
 
   // Fetch Data (Boards & Experiments)
   const fetchData = useCallback(async () => {
@@ -124,8 +124,8 @@ export function useExperiments(isDemoMode: boolean = false) {
     const tempId = Math.random().toString(36).substr(2, 9);
     const boardName = boards.find(b => b.id === experiment.board_id)?.name;
     
-    // Use Profile Name if available, otherwise User Email, otherwise 'Me'
-    const ownerName = profile?.full_name || user?.email || 'Me';
+    // Use Passed Profile Name if available, otherwise User Email, otherwise 'Me'
+    const ownerName = userProfile?.full_name || user?.email || 'Me';
 
     const newExp: Experiment = {
       ...experiment,
@@ -155,10 +155,10 @@ export function useExperiments(isDemoMode: boolean = false) {
             fetchData(); // Refetch to get server-generated timestamps/ids
         }
     }
-  }, [user, profile, fetchData, isDemoMode, boards]);
+  }, [user, userProfile, fetchData, isDemoMode, boards]);
 
   const addComment = useCallback(async (experimentId: string, text: string) => {
-    const userName = profile?.full_name || user?.email || 'Me';
+    const userName = userProfile?.full_name || user?.email || 'Me';
 
     const newComment: Comment = {
       id: Math.random().toString(36),
@@ -182,7 +182,7 @@ export function useExperiments(isDemoMode: boolean = false) {
             text: text
         });
     }
-  }, [user, profile, isDemoMode]);
+  }, [user, userProfile, isDemoMode]);
 
   // --- Board Actions ---
 
