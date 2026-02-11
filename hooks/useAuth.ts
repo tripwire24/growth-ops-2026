@@ -27,7 +27,10 @@ export function useAuth() {
         id: data.id,
         email: email,
         full_name: data.full_name,
-        avatar_url: data.avatar_url
+        avatar_url: data.avatar_url,
+        bio: data.bio,
+        linkedin_url: data.linkedin_url,
+        contact_email: data.contact_email
       });
     } else {
         // Fallback if profile row doesn't exist yet
@@ -97,21 +100,56 @@ export function useAuth() {
     if (error) throw error;
   };
 
-  const updateProfile = async (fullName: string, avatarUrl: string) => {
+  const uploadAvatar = async (file: File): Promise<string | null> => {
+     if (!supabase || !user) return null;
+     
+     const fileExt = file.name.split('.').pop();
+     const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+     const filePath = `${fileName}`;
+
+     // 1. Upload
+     const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+     if (uploadError) {
+         console.warn("Avatar upload failed (Check bucket permissions):", uploadError);
+         return null;
+     }
+
+     // 2. Get Public URL
+     const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+     return data.publicUrl;
+  };
+
+  const updateProfile = async (updates: Partial<UserProfile>, avatarFile?: File) => {
     if (!supabase || !user) return;
+
+    let newAvatarUrl = updates.avatar_url;
+
+    // Handle File Upload if provided
+    if (avatarFile) {
+        const uploadedUrl = await uploadAvatar(avatarFile);
+        if (uploadedUrl) {
+            newAvatarUrl = uploadedUrl;
+        }
+    }
     
-    const updates = {
+    const dbUpdates = {
       id: user.id,
-      full_name: fullName,
-      avatar_url: avatarUrl,
       updated_at: new Date(),
+      full_name: updates.full_name,
+      avatar_url: newAvatarUrl,
+      bio: updates.bio,
+      linkedin_url: updates.linkedin_url,
+      contact_email: updates.contact_email
     };
 
-    const { error } = await supabase.from('profiles').upsert(updates);
+    const { error } = await supabase.from('profiles').upsert(dbUpdates);
     if (error) throw error;
 
     // Update local state immediately
-    setProfile(prev => prev ? { ...prev, full_name: fullName, avatar_url: avatarUrl } : null);
+    setProfile(prev => prev ? { ...prev, ...updates, avatar_url: newAvatarUrl || prev.avatar_url } : null);
   };
   
   const signOut = async () => {

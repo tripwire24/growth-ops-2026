@@ -19,7 +19,7 @@ interface LayoutProps {
   onEditBoard: (board: Board) => void;
   // Profile Props
   userProfile: UserProfile | null;
-  onUpdateProfile: (name: string, avatar: string) => Promise<void>;
+  onUpdateProfile: (updates: Partial<UserProfile>, avatarFile?: File) => Promise<void>;
   onLogout: () => void;
 }
 

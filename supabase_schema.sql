@@ -1,9 +1,14 @@
+
 -- 1. Create a table for public profiles (Syncs with Auth)
 create table profiles (
   id uuid references auth.users not null primary key,
   updated_at timestamp with time zone,
   full_name text,
-  avatar_url text
+  avatar_url text,
+  -- New Fields
+  bio text,
+  linkedin_url text,
+  contact_email text
 );
 
 -- 2. Enable Enums for strict status control
@@ -72,3 +77,9 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- 8. STORAGE (Optional: Run this if you want image uploads to work in Production)
+-- insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
+-- create policy "Avatar images are publicly accessible." on storage.objects for select using ( bucket_id = 'avatars' );
+-- create policy "Anyone can upload an avatar." on storage.objects for insert with check ( bucket_id = 'avatars' );
+-- create policy "Anyone can update an avatar." on storage.objects for update with check ( bucket_id = 'avatars' );

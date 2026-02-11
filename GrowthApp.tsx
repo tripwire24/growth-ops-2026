@@ -21,7 +21,10 @@ export default function GrowthApp() {
     id: 'guest',
     email: 'guest@demo.com',
     full_name: 'Guest User',
-    avatar_url: ''
+    avatar_url: '',
+    bio: 'Just passing through...',
+    contact_email: '',
+    linkedin_url: ''
   });
 
   // Determine active profile (Auth or Guest)
@@ -76,11 +79,23 @@ export default function GrowthApp() {
 
   // --- Handlers ---
 
-  const handleUpdateProfile = async (name: string, avatar: string) => {
+  const handleUpdateProfile = async (updates: Partial<UserProfile>, avatarFile?: File) => {
     if (isGuestMode) {
-      setGuestProfile(prev => ({ ...prev, full_name: name, avatar_url: avatar }));
+      // Logic to handle "Simulated Upload" in Guest Mode (Base64)
+      let newAvatarUrl = updates.avatar_url || guestProfile.avatar_url;
+      
+      if (avatarFile) {
+        // Convert to Base64 for local display
+        const reader = new FileReader();
+        newAvatarUrl = await new Promise((resolve) => {
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsDataURL(avatarFile);
+        });
+      }
+
+      setGuestProfile(prev => ({ ...prev, ...updates, avatar_url: newAvatarUrl }));
     } else {
-      await updateAuthProfile(name, avatar);
+      await updateAuthProfile(updates, avatarFile);
     }
   };
 

@@ -14,6 +14,10 @@ export interface UserProfile {
   email: string;
   full_name?: string;
   avatar_url?: string;
+  // New Fields
+  bio?: string;
+  linkedin_url?: string;
+  contact_email?: string;
 }
 
 export interface Comment {
