@@ -9,7 +9,7 @@ export function useExperiments(isDemoMode: boolean = false) {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   // Fetch Data (Boards & Experiments)
   const fetchData = useCallback(async () => {
@@ -17,7 +17,6 @@ export function useExperiments(isDemoMode: boolean = false) {
       // MOCK DATA
       setBoards(INITIAL_BOARDS);
       
-      // Map mock boards to mock experiments for UI
       const enrichedExperiments = INITIAL_EXPERIMENTS.map(exp => ({
         ...exp,
         boardName: INITIAL_BOARDS.find(b => b.id === exp.board_id)?.name || 'Unknown Board'
@@ -29,36 +28,18 @@ export function useExperiments(isDemoMode: boolean = false) {
     }
 
     try {
-      // 1. Fetch Boards
-      // In a real DB scenario, you'd have a 'boards' table. 
-      // For this "Schema-less" demo on top of existing 'experiments' table, we might fake it, 
-      // BUT let's assume we are just using local state for boards if table doesn't exist, 
-      // OR we just use the Mock Boards even in "Connected" mode if we haven't migrated the DB yet.
-      // To keep it simple for this prompt without altering SQL Schema too much:
-      // We will simulate boards in DB or just use local boards for the UI structure 
-      // but store board_id in experiments tags or metadata if we wanted strict purity.
-      // HOWEVER, the user asked for "ability to create boards".
-      // Let's assume for now boards are client-side or we'd need a table.
-      // For this answer, I'll stick to local state for Boards if Supabase doesn't have a boards table,
-      // but ideally we'd create a table.
-      
-      // Fallback: Use Mock boards even when connected, unless we actually implemented the table.
-      // Since I cannot run SQL migrations on your live DB, I will maintain Boards in Local State / Mock 
-      // but persist Experiments in DB with a `board_id` column (which might not exist yet).
-      // WORKAROUND: We will use `tags` to store "Board:Name" or just accept that boards are ephemeral in this demo version 
-      // unless we add a table.
-      
-      // Let's just use the MOCK BOARDS for the container structure to satisfy the UI request 
-      // while persisting experiments to Supabase.
       setBoards(INITIAL_BOARDS);
 
-      // 2. Fetch Experiments
+      // Fetch Experiments with real owner names
       const { data, error } = await supabase
         .from('experiments')
         .select(`
           *,
           owner:profiles(full_name),
-          comments(*)
+          comments(
+            *,
+            profile:profiles(full_name)
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -67,12 +48,14 @@ export function useExperiments(isDemoMode: boolean = false) {
       const formattedData: Experiment[] = data.map((exp: any) => ({
         ...exp,
         owner: exp.owner?.full_name || 'Unknown',
-        boardName: INITIAL_BOARDS.find(b => b.id === exp.board_id)?.name || 'General', // Fallback
+        boardName: INITIAL_BOARDS.find(b => b.id === exp.board_id)?.name || 'General',
         comments: exp.comments.map((c: any) => ({
             ...c,
-            userName: 'Teammate', 
-            timestamp: c.created_at 
-        }))
+            // Use joined profile name for comments
+            userName: c.profile?.full_name || 'Teammate', 
+            timestamp: c.created_at,
+            userId: c.user_id
+        })).sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       }));
 
       setExperiments(formattedData);
@@ -139,9 +122,10 @@ export function useExperiments(isDemoMode: boolean = false) {
 
   const addExperiment = useCallback(async (experiment: Omit<Experiment, 'id' | 'created_at' | 'archived' | 'result' | 'owner' | 'comments' | 'tags' | 'locked' | 'boardName'>) => {
     const tempId = Math.random().toString(36).substr(2, 9);
-    
-    // Find board name for UI consistency immediately
     const boardName = boards.find(b => b.id === experiment.board_id)?.name;
+    
+    // Use Profile Name if available, otherwise User Email, otherwise 'Me'
+    const ownerName = profile?.full_name || user?.email || 'Me';
 
     const newExp: Experiment = {
       ...experiment,
@@ -151,7 +135,7 @@ export function useExperiments(isDemoMode: boolean = false) {
       locked: false,
       result: null,
       tags: [],
-      owner: user?.email || 'Me', 
+      owner: ownerName, 
       comments: [],
       boardName
     };
@@ -168,16 +152,18 @@ export function useExperiments(isDemoMode: boolean = false) {
         }]).select();
         
         if(!error && data) {
-            fetchData();
+            fetchData(); // Refetch to get server-generated timestamps/ids
         }
     }
-  }, [user, fetchData, isDemoMode, boards]);
+  }, [user, profile, fetchData, isDemoMode, boards]);
 
   const addComment = useCallback(async (experimentId: string, text: string) => {
+    const userName = profile?.full_name || user?.email || 'Me';
+
     const newComment: Comment = {
       id: Math.random().toString(36),
       userId: user?.id || 'temp',
-      userName: 'Me',
+      userName: userName,
       text,
       timestamp: new Date().toISOString()
     };
@@ -196,7 +182,7 @@ export function useExperiments(isDemoMode: boolean = false) {
             text: text
         });
     }
-  }, [user, isDemoMode]);
+  }, [user, profile, isDemoMode]);
 
   // --- Board Actions ---
 
@@ -208,8 +194,6 @@ export function useExperiments(isDemoMode: boolean = false) {
       created_at: new Date().toISOString()
     };
     setBoards(prev => [...prev, newBoard]);
-    // Note: Not persisting boards to DB in this version as schema SQL isn't updated
-    // In a real app, await supabase.from('boards').insert(...)
     return newBoard.id; 
   }, []);
 

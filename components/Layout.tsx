@@ -1,7 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
-import { Layers, Database, Plus, Menu, User, BarChart2, Moon, Sun, AlertTriangle, Layout as LayoutIcon, Settings, ChevronRight } from 'lucide-react';
-import { Board } from '../types';
+import { Layers, Database, Plus, Menu, User, BarChart2, Moon, Sun, AlertTriangle, Layout as LayoutIcon, Settings, ChevronRight, LogOut } from 'lucide-react';
+import { Board, UserProfile } from '../types';
+import { useAuth } from '../hooks/useAuth';
+import { ProfileModal } from './ProfileModal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -56,6 +58,11 @@ export const Layout: React.FC<LayoutProps> = ({
 }) => {
   
   const currentBoard = boards.find(b => b.id === activeBoardId);
+  const { profile, signOut, updateProfile } = useAuth();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const displayName = profile?.full_name || (isMockMode ? 'Guest User' : 'Set your name');
+  const displayStatus = isMockMode ? 'Demo Mode' : (profile?.full_name ? 'Online' : 'Incomplete Profile');
 
   return (
     <div className="flex h-screen w-screen bg-slate-50 dark:bg-slate-950 overflow-hidden flex-col md:flex-row">
@@ -159,16 +166,35 @@ export const Layout: React.FC<LayoutProps> = ({
         )}
 
         <div className="p-4 border-t border-slate-800 flex items-center gap-2">
-           <button className="flex-1 flex items-center gap-3 text-slate-400 hover:text-white transition-colors text-left">
-             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
-               <User size={16} />
+           <button 
+             onClick={() => setIsProfileOpen(true)}
+             className="flex-1 flex items-center gap-3 text-slate-400 hover:text-white transition-colors text-left group"
+           >
+             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0 overflow-hidden border border-slate-600 group-hover:border-indigo-500 transition-colors">
+               {profile?.avatar_url ? (
+                 <img src={profile.avatar_url} alt="Av" className="w-full h-full object-cover" />
+               ) : (
+                 <User size={16} />
+               )}
              </div>
-             <div className="text-sm overflow-hidden">
-               <p className="font-medium truncate">{isMockMode ? 'Demo User' : 'Team Member'}</p>
-               <p className="text-xs text-slate-500 truncate">{isMockMode ? 'Local Session' : 'Online'}</p>
+             <div className="text-sm overflow-hidden flex-1">
+               <p className="font-medium truncate">{displayName}</p>
+               <p className="text-xs text-slate-500 truncate">{displayStatus}</p>
              </div>
+             <Settings size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
+          
+          <div className="h-6 w-px bg-slate-800 mx-1"></div>
+          
           <ThemeToggle />
+          
+          <button 
+             onClick={signOut}
+             className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+             title="Log Out"
+          >
+            <LogOut size={18} />
+          </button>
         </div>
       </aside>
 
@@ -187,7 +213,10 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
           <div className="flex gap-2">
             <ThemeToggle />
-            <button className="text-slate-300">
+            <button 
+              onClick={() => setIsProfileOpen(true)}
+              className="text-slate-300"
+            >
               <Menu size={24} />
             </button>
           </div>
@@ -243,6 +272,15 @@ export const Layout: React.FC<LayoutProps> = ({
           {children}
         </div>
       </main>
+      
+      {/* Profile Modal */}
+      <ProfileModal 
+        isOpen={isProfileOpen} 
+        onClose={() => setIsProfileOpen(false)}
+        profile={profile}
+        onSave={updateProfile}
+        onLogout={signOut}
+      />
     </div>
   );
 };
