@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { KanbanBoard } from './components/KanbanBoard';
 import { VaultTable } from './components/VaultTable';
@@ -20,7 +20,12 @@ export default function App() {
 
   // 1. Loading State
   if (isSupabaseConfigured && authLoading) {
-      return <div className="h-screen w-screen flex items-center justify-center bg-slate-900 text-white">Loading Growth Ops...</div>;
+      return (
+        <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-900 text-white gap-4">
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="animate-pulse">Loading Growth Ops...</p>
+        </div>
+      );
   }
 
   // 2. Auth Enforced (Only if configured and not loading)
@@ -34,18 +39,20 @@ export default function App() {
   }
 
   const handleNewExperiment = () => {
+    // In a real app, this would open a modal with empty fields
+    // For now, we'll auto-populate a template to speed up testing
     const title = prompt("Enter experiment title:");
     if (!title) return;
     
     addExperiment({
       title,
-      description: 'New experiment description placeholder.',
+      description: 'Describe your hypothesis...',
       status: 'idea',
       ice_impact: 5,
       ice_confidence: 5,
       ice_ease: 5,
       market: 'US',
-      type: 'Growth',
+      type: 'Acquisition',
     });
   };
 
