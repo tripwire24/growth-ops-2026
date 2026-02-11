@@ -26,13 +26,8 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string) => {
+  const signInWithMagicLink = async (email: string) => {
     if (!supabase) return;
-    
-    // Debugging info for the developer
-    console.log('Sending magic link to:', email);
-    console.log('Redirect URL:', window.location.origin);
-
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -41,8 +36,36 @@ export function useAuth() {
     });
     if (error) throw error;
   };
+
+  const signInWithPassword = async (email: string, password: string) => {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (error) throw error;
+  };
+
+  const signUp = async (email: string, password: string) => {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin,
+      }
+    });
+    if (error) throw error;
+  };
   
   const signOut = () => supabase?.auth.signOut();
 
-  return { user, loading, signIn, signOut };
+  return { 
+    user, 
+    loading, 
+    signInWithMagicLink, 
+    signInWithPassword, 
+    signUp, 
+    signOut 
+  };
 }
