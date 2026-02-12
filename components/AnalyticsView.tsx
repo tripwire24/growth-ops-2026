@@ -3,7 +3,7 @@
 // AnalyticsView — Enhanced with real velocity, metric tracking, and win rate
 // ==========================================
 import React, { useMemo } from 'react';
-import { Experiment, Board, STATUS_CONFIG, TYPES, MARKETS, ExperimentStatus, calculateCompositeScore } from '../types';
+import { Experiment, Board, STATUS_CONFIG, TYPES, MARKETS, ExperimentStatus, calculateCompositeScore, MetricFormat } from '../types';
 import { TrendingUp, TrendingDown, Target, Zap, Trophy, BarChart3, Activity } from 'lucide-react';
 
 // --- SVG Pie Chart ---
@@ -74,11 +74,19 @@ const BarChart = ({ data, color }: { data: { label: string; value: number }[]; c
 // --- Metric Progress Mini Card ---
 const MetricProgressCard: React.FC<{
   name: string;
-  unit: string;
+  format: MetricFormat;
+  suffix?: string;
   baseline: number;
   target: number;
   actual: number | null;
-}> = ({ name, unit, baseline, target, actual }) => {
+}> = ({ name, format, suffix, baseline, target, actual }) => {
+  const formatValue = (val: number) => {
+    if (format === 'percent') return `${val}%`;
+    if (format === 'currency') return `$${val}`;
+    if (format === 'time') return `${val}h`;
+    return `${val}${suffix ? ' ' + suffix : ''}`;
+  };
+
   const progress = actual !== null ? ((actual - baseline) / (target - baseline)) * 100 : 0;
   const isPositive = actual !== null && actual >= target;
 
@@ -94,10 +102,10 @@ const MetricProgressCard: React.FC<{
       </div>
       <div className="flex items-baseline gap-2">
         <span className="text-lg font-bold text-slate-900 dark:text-white">
-          {actual !== null ? `${actual}${unit}` : '—'}
+          {actual !== null ? formatValue(actual) : '—'}
         </span>
         <span className="text-[10px] text-slate-400">
-          target: {target}{unit}
+          target: {formatValue(target)}
         </span>
       </div>
       <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-2 overflow-hidden">
@@ -244,7 +252,8 @@ export const AnalyticsView: React.FC<{ experiments: Experiment[]; board?: Board 
                 <MetricProgressCard
                   key={ms.id}
                   name={ms.name}
-                  unit={ms.unit}
+                  format={ms.format}
+                  suffix={ms.suffix}
                   baseline={ms.avgBaseline ?? 0}
                   target={ms.avgTarget ?? 0}
                   actual={ms.avgActual}

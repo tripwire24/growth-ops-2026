@@ -5,11 +5,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Experiment, ExperimentStatus, MARKETS, TYPES, STATUS_CONFIG, Comment, 
-  Board, MetricValue, DimensionScore, calculateCompositeScore, DEFAULT_DIMENSIONS 
+  Board, MetricValue, DimensionScore, calculateCompositeScore, DEFAULT_DIMENSIONS, MetricDefinition 
 } from '../types';
 import { 
   X, Save, Archive, MessageSquare, Send, User, CheckCircle, Lock, Plus, 
-  Tag, AlertTriangle, Trash2, Target, TrendingUp, BarChart3 
+  Tag, AlertTriangle, Trash2, Target, TrendingUp, BarChart3, ChevronDown 
 } from 'lucide-react';
 
 interface ExperimentModalProps {
@@ -30,19 +30,18 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({
   const [newComment, setNewComment] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [showMetricDropdown, setShowMetricDropdown] = useState(false);
 
   useEffect(() => {
     if (experiment) {
-      // Initialize metricValues from board config if missing
-      const boardMetrics = board?.config?.metrics || [];
-      const existingMetrics = experiment.metricValues || [];
+      // NOTE: We do NOT autofill all board metrics anymore. We only show existing values.
+      // But for new cards or cards with no metrics, we might want to start empty.
       
-      const mergedMetrics: MetricValue[] = boardMetrics.map(def => {
-        const existing = existingMetrics.find(m => m.metricId === def.id);
-        return existing || { metricId: def.id, baseline: null, target: null, actual: null };
-      });
+      const existingMetrics = experiment.metricValues || [];
+      // Clean up metrics that might have been deleted from board settings (optional, but good for hygiene)
+      const validMetrics = board?.config?.metrics ? existingMetrics.filter(m => board.config!.metrics.some(bm => bm.id === m.metricId)) : existingMetrics;
 
-      // Initialize dimension scores if using custom dimensions
+      // Initialize dimension scores
       const boardDimensions = board?.config?.useCustomDimensions 
         ? board.config.dimensions 
         : DEFAULT_DIMENSIONS;
@@ -60,12 +59,13 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({
 
       setFormData({ 
         ...experiment, 
-        metricValues: mergedMetrics,
+        metricValues: validMetrics,
         dimensionScores: mergedDimScores 
       });
       setNewComment('');
       setTagInput('');
       setDeleteConfirm(false);
+      setShowMetricDropdown(false);
     }
   }, [experiment, board]);
 
@@ -80,6 +80,13 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({
   const boardDimensions = board?.config?.useCustomDimensions 
     ? board.config.dimensions 
     : DEFAULT_DIMENSIONS;
+
+  const boardMetrics = board?.config?.metrics || [];
+  
+  // Metrics that are on the board but not yet added to this card
+  const availableMetrics = boardMetrics.filter(bm => 
+    !formData.metricValues?.some(mv => mv.metricId === bm.id)
+  );
 
   const handleChange = (field: keyof Experiment, value: any) => {
     if (formData.locked) return;
@@ -113,6 +120,30 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({
     });
   };
 
+  const handleAddMetricToCard = (metricId: string) => {
+    if(isLocked) return;
+    setFormData(prev => {
+      if (!prev) return null;
+      const current = prev.metricValues || [];
+      return { 
+        ...prev, 
+        metricValues: [...current, { metricId, baseline: null, target: null, actual: null }] 
+      };
+    });
+    setShowMetricDropdown(false);
+  };
+
+  const handleRemoveMetricFromCard = (metricId: string) => {
+    if(isLocked) return;
+    setFormData(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        metricValues: (prev.metricValues || []).filter(m => m.metricId !== metricId)
+      };
+    });
+  };
+
   const handleMetricChange = (metricId: string, field: 'baseline' | 'target' | 'actual', value: string) => {
     if (isLocked) return;
     setFormData(prev => {
@@ -122,8 +153,6 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({
       const numValue = value === '' ? null : parseFloat(value);
       if (idx >= 0) {
         metrics[idx] = { ...metrics[idx], [field]: numValue };
-      } else {
-        metrics.push({ metricId, baseline: null, target: null, actual: null, [field]: numValue });
       }
       return { ...prev, metricValues: metrics };
     });
@@ -163,7 +192,14 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({
     }
   };
 
-  const boardMetrics = board?.config?.metrics || [];
+  // Helper to format placeholder based on metric config
+  const getFormatPlaceholder = (metricDef?: MetricDefinition) => {
+    if (!metricDef) return '—';
+    if (metricDef.format === 'percent') return '0%';
+    if (metricDef.format === 'currency') return '$0.00';
+    if (metricDef.format === 'time') return '0h';
+    return '0';
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -324,77 +360,151 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({
             </div>
 
             {/* CUSTOM METRICS (Baseline / Target / Actual) */}
-            {boardMetrics.length > 0 && (
-              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800">
-                <div className="flex items-center gap-2 mb-4">
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
                   <Target size={16} className="text-indigo-600 dark:text-indigo-400" />
                   <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Tracking Metrics</h3>
                 </div>
                 
-                {/* Column Headers */}
-                <div className="grid grid-cols-4 gap-3 mb-2 px-1">
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Metric</span>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center">Baseline</span>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center">Target</span>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center">Actual</span>
-                </div>
-                
-                <div className="space-y-2">
-                  {boardMetrics.map(metricDef => {
-                    const mv = formData.metricValues?.find(m => m.metricId === metricDef.id);
-                    const hit = mv?.actual !== null && mv?.actual !== undefined && mv?.target !== null && mv?.target !== undefined;
-                    const isPositive = hit && (mv!.actual! >= mv!.target!);
-                    
-                    return (
-                      <div key={metricDef.id} className="grid grid-cols-4 gap-3 items-center">
-                        <div className="truncate" title={metricDef.description}>
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{metricDef.name}</span>
-                          <span className="text-[10px] text-slate-400 ml-1">{metricDef.unit}</span>
+                {/* Add Metric Dropdown */}
+                {!isLocked && availableMetrics.length > 0 && (
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowMetricDropdown(!showMetricDropdown)}
+                      className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1"
+                    >
+                      <Plus size={12} /> Add Metric
+                    </button>
+                    {showMetricDropdown && (
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden">
+                        <div className="p-2 text-xs font-semibold text-slate-400 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-700">
+                          Select Metric
                         </div>
-                        <input
-                          type="number"
-                          step="any"
-                          value={mv?.baseline ?? ''}
-                          onChange={e => handleMetricChange(metricDef.id, 'baseline', e.target.value)}
-                          disabled={isLocked}
-                          placeholder="—"
-                          className="px-2 py-1.5 text-sm text-center rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-60"
-                        />
-                        <input
-                          type="number"
-                          step="any"
-                          value={mv?.target ?? ''}
-                          onChange={e => handleMetricChange(metricDef.id, 'target', e.target.value)}
-                          disabled={isLocked}
-                          placeholder="—"
-                          className="px-2 py-1.5 text-sm text-center rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-60"
-                        />
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step="any"
-                            value={mv?.actual ?? ''}
-                            onChange={e => handleMetricChange(metricDef.id, 'actual', e.target.value)}
-                            disabled={isLocked}
-                            placeholder="—"
-                            className={`w-full px-2 py-1.5 text-sm text-center rounded border ${
-                              hit 
-                                ? isPositive 
-                                  ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 font-bold' 
-                                  : 'border-rose-300 bg-rose-50 dark:bg-rose-900/20 dark:border-rose-700 text-rose-700 dark:text-rose-400 font-bold'
-                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white'
-                            } focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-60`}
-                          />
-                          {hit && (
-                            <TrendingUp size={10} className={`absolute right-1 top-1 ${isPositive ? 'text-emerald-500' : 'text-rose-500 rotate-180'}`} />
-                          )}
-                        </div>
+                        {availableMetrics.map(bm => (
+                          <button
+                            key={bm.id}
+                            onClick={() => handleAddMetricToCard(bm.id)}
+                            className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          >
+                            {bm.name}
+                          </button>
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+              
+              {(formData.metricValues && formData.metricValues.length > 0) ? (
+                <>
+                  {/* Column Headers */}
+                  <div className="grid grid-cols-12 gap-2 mb-2 px-1">
+                    <span className="col-span-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Metric</span>
+                    <span className="col-span-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center">Baseline</span>
+                    <span className="col-span-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center">Target</span>
+                    <span className="col-span-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center">Actual</span>
+                    <span className="col-span-1"></span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {formData.metricValues.map(mv => {
+                      const metricDef = boardMetrics.find(m => m.id === mv.metricId);
+                      if (!metricDef) return null; // Should not happen
+
+                      const hit = mv.actual !== null && mv.actual !== undefined && mv.target !== null && mv.target !== undefined;
+                      const isPositive = hit && (mv.actual! >= mv.target!);
+                      
+                      const prefix = metricDef.format === 'currency' ? '$' : '';
+                      const suffix = metricDef.format === 'percent' ? '%' : metricDef.format === 'time' ? 'h' : metricDef.suffix ? ` ${metricDef.suffix}` : '';
+
+                      return (
+                        <div key={metricDef.id} className="grid grid-cols-12 gap-2 items-center group">
+                          <div className="col-span-4 truncate" title={metricDef.description}>
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{metricDef.name}</span>
+                          </div>
+                          
+                          <div className="col-span-2 relative">
+                            <input
+                              type="number"
+                              step="any"
+                              value={mv.baseline ?? ''}
+                              onChange={e => handleMetricChange(metricDef.id, 'baseline', e.target.value)}
+                              disabled={isLocked}
+                              placeholder="—"
+                              className="w-full px-1.5 py-1.5 text-sm text-center rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-60 pl-3 pr-3"
+                            />
+                            <span className="absolute right-1 top-1.5 text-[10px] text-slate-400 pointer-events-none">{suffix}</span>
+                            {prefix && <span className="absolute left-1 top-1.5 text-[10px] text-slate-400 pointer-events-none">{prefix}</span>}
+                          </div>
+
+                          <div className="col-span-2 relative">
+                            <input
+                              type="number"
+                              step="any"
+                              value={mv.target ?? ''}
+                              onChange={e => handleMetricChange(metricDef.id, 'target', e.target.value)}
+                              disabled={isLocked}
+                              placeholder="—"
+                              className="w-full px-1.5 py-1.5 text-sm text-center rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-60 pl-3 pr-3"
+                            />
+                            <span className="absolute right-1 top-1.5 text-[10px] text-slate-400 pointer-events-none">{suffix}</span>
+                            {prefix && <span className="absolute left-1 top-1.5 text-[10px] text-slate-400 pointer-events-none">{prefix}</span>}
+                          </div>
+
+                          <div className="col-span-3 relative">
+                            <input
+                              type="number"
+                              step="any"
+                              value={mv.actual ?? ''}
+                              onChange={e => handleMetricChange(metricDef.id, 'actual', e.target.value)}
+                              disabled={isLocked}
+                              placeholder="—"
+                              className={`w-full px-1.5 py-1.5 text-sm text-center rounded border ${
+                                hit 
+                                  ? isPositive 
+                                    ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 font-bold' 
+                                    : 'border-rose-300 bg-rose-50 dark:bg-rose-900/20 dark:border-rose-700 text-rose-700 dark:text-rose-400 font-bold'
+                                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white'
+                              } focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-60 pl-3 pr-3`}
+                            />
+                            {hit && (
+                              <TrendingUp size={10} className={`absolute right-1 bottom-1 ${isPositive ? 'text-emerald-500' : 'text-rose-500 rotate-180'}`} />
+                            )}
+                            <span className={`absolute right-1 top-1.5 text-[10px] pointer-events-none ${hit ? (isPositive ? 'text-emerald-600' : 'text-rose-600') : 'text-slate-400'}`}>{suffix}</span>
+                            {prefix && <span className={`absolute left-1 top-1.5 text-[10px] pointer-events-none ${hit ? (isPositive ? 'text-emerald-600' : 'text-rose-600') : 'text-slate-400'}`}>{prefix}</span>}
+                          </div>
+
+                          <div className="col-span-1 flex justify-end">
+                            {!isLocked && (
+                              <button 
+                                onClick={() => handleRemoveMetricFromCard(metricDef.id)}
+                                className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1"
+                                title="Remove from card"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+                  <p className="text-xs text-slate-400">No metrics tracked for this experiment.</p>
+                  {!isLocked && availableMetrics.length > 0 && (
+                    <button 
+                      onClick={() => setShowMetricDropdown(true)}
+                      className="mt-2 text-xs font-bold text-indigo-500 hover:text-indigo-600"
+                    >
+                      Add a Metric
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Tags */}
             <div>

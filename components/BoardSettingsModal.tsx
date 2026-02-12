@@ -3,8 +3,8 @@
 // BoardSettingsModal — Configure metrics & dimensions per board
 // ==========================================
 import React, { useState, useEffect } from 'react';
-import { Board, BoardConfig, MetricDefinition, DimensionDefinition, DEFAULT_DIMENSIONS, DEFAULT_BOARD_CONFIG } from '../types';
-import { X, Plus, Trash2, Settings, Ruler, BarChart3, GripVertical, Info, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Board, BoardConfig, MetricDefinition, DimensionDefinition, DEFAULT_DIMENSIONS, DEFAULT_BOARD_CONFIG, MetricFormat } from '../types';
+import { X, Plus, Trash2, Settings, Ruler, BarChart3, GripVertical, Info, ToggleLeft, ToggleRight, DollarSign, Percent, Hash, Clock } from 'lucide-react';
 
 interface BoardSettingsModalProps {
   isOpen: boolean;
@@ -25,23 +25,31 @@ const MetricRow: React.FC<{
       type="text"
       value={metric.name}
       onChange={e => onChange({ ...metric, name: e.target.value })}
-      placeholder="Metric name"
+      placeholder="Metric name (e.g. Conversion)"
       className="flex-1 px-2 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
     />
-    <input
-      type="text"
-      value={metric.unit}
-      onChange={e => onChange({ ...metric, unit: e.target.value })}
-      placeholder="Unit"
-      className="w-16 px-2 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-center"
-    />
-    <input
-      type="text"
-      value={metric.description || ''}
-      onChange={e => onChange({ ...metric, description: e.target.value })}
-      placeholder="Description (optional)"
-      className="flex-1 px-2 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-    />
+    
+    <select
+      value={metric.format}
+      onChange={e => onChange({ ...metric, format: e.target.value as MetricFormat })}
+      className="w-28 px-2 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+    >
+      <option value="number">Number (#)</option>
+      <option value="percent">Percent (%)</option>
+      <option value="currency">Currency ($)</option>
+      <option value="time">Time (hr)</option>
+    </select>
+
+    {metric.format === 'number' && (
+      <input
+        type="text"
+        value={metric.suffix || ''}
+        onChange={e => onChange({ ...metric, suffix: e.target.value })}
+        placeholder="Suffix (e.g. users)"
+        className="w-24 px-2 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+      />
+    )}
+
     <button
       onClick={onDelete}
       className="p-1.5 text-slate-400 hover:text-red-500 transition-colors rounded"
@@ -115,7 +123,7 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
   const addMetric = () => {
     setConfig(prev => ({
       ...prev,
-      metrics: [...prev.metrics, { id: generateId(), name: '', unit: '', description: '' }],
+      metrics: [...prev.metrics, { id: generateId(), name: '', format: 'number' }],
     }));
   };
 
@@ -164,7 +172,6 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
   };
 
   const handleSave = () => {
-    // Filter out empty metrics/dimensions
     const cleanConfig: BoardConfig = {
       ...config,
       metrics: config.metrics.filter(m => m.name.trim()),
@@ -176,7 +183,7 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-3xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
@@ -202,7 +209,10 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <BarChart3 size={18} className="text-indigo-600 dark:text-indigo-400" />
-                <h4 className="font-semibold text-slate-800 dark:text-white">Tracking Metrics</h4>
+                <div>
+                  <h4 className="font-semibold text-slate-800 dark:text-white text-sm">Defined Metrics</h4>
+                  <p className="text-xs text-slate-500">Available metrics for experiments on this board.</p>
+                </div>
               </div>
               <button
                 onClick={addMetric}
@@ -215,8 +225,8 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 p-3">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3 px-7">
                 <span className="flex-1">Name</span>
-                <span className="w-16 text-center">Unit</span>
-                <span className="flex-1">Description</span>
+                <span className="w-28">Format</span>
+                <span className="w-24">Suffix</span>
                 <span className="w-8"></span>
               </div>
               
@@ -224,7 +234,7 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
                 <div className="text-center py-6 text-slate-400 text-sm">
                   <BarChart3 size={24} className="mx-auto mb-2 opacity-40" />
                   <p>No metrics configured yet.</p>
-                  <p className="text-xs mt-1">Add metrics like "Conversion Rate", "MRR", or "Churn %" to track baselines and targets per experiment.</p>
+                  <p className="text-xs mt-1">Add metrics to track experiment results.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -244,14 +254,13 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
             <div className="flex flex-wrap gap-1.5 mt-3">
               <span className="text-[10px] text-slate-400 uppercase tracking-wider mr-1 self-center">Quick add:</span>
               {[
-                { name: 'Conversion Rate', unit: '%' },
-                { name: 'MRR', unit: '$' },
-                { name: 'CAC', unit: '$' },
-                { name: 'LTV', unit: '$' },
-                { name: 'Churn Rate', unit: '%' },
-                { name: 'NPS', unit: 'pts' },
-                { name: 'DAU', unit: 'users' },
-                { name: 'ARPU', unit: '$' },
+                { name: 'Conversion Rate', format: 'percent' },
+                { name: 'MRR', format: 'currency' },
+                { name: 'CAC', format: 'currency' },
+                { name: 'LTV', format: 'currency' },
+                { name: 'Churn Rate', format: 'percent' },
+                { name: 'NPS', format: 'number' },
+                { name: 'DAU', format: 'number', suffix: 'users' },
               ]
                 .filter(preset => !config.metrics.some(m => m.name === preset.name))
                 .map(preset => (
@@ -260,7 +269,7 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
                     onClick={() => {
                       setConfig(prev => ({
                         ...prev,
-                        metrics: [...prev.metrics, { id: generateId(), ...preset, description: '' }],
+                        metrics: [...prev.metrics, { id: generateId(), ...preset } as any],
                       }));
                     }}
                     className="px-2 py-1 text-[11px] font-medium rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-indigo-300 hover:text-indigo-600 dark:hover:border-indigo-600 dark:hover:text-indigo-400 transition-colors"
@@ -276,7 +285,10 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Ruler size={18} className="text-indigo-600 dark:text-indigo-400" />
-                <h4 className="font-semibold text-slate-800 dark:text-white">Scoring Dimensions</h4>
+                <div>
+                  <h4 className="font-semibold text-slate-800 dark:text-white text-sm">Scoring Dimensions</h4>
+                  <p className="text-xs text-slate-500">Criteria used to prioritize experiments.</p>
+                </div>
               </div>
               <button
                 onClick={toggleCustomDimensions}
@@ -297,15 +309,8 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
                   <div>
                     <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">Using default ICE scoring</p>
                     <p className="text-xs text-indigo-600/70 dark:text-indigo-400/70 mt-1">
-                      Impact, Confidence, and Ease — each scored 1-10. Toggle to "Custom" to define your own scoring dimensions like Revenue Potential, Strategic Alignment, etc.
+                      Impact, Confidence, and Ease — each scored 1-10. Toggle to "Custom" to define your own scoring dimensions.
                     </p>
-                    <div className="flex gap-3 mt-3">
-                      {DEFAULT_DIMENSIONS.map(d => (
-                        <span key={d.id} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-800/30 rounded text-xs font-medium text-indigo-700 dark:text-indigo-300">
-                          {d.name} ({d.min}-{d.max})
-                        </span>
-                      ))}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -343,7 +348,7 @@ export const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({ isOpen, 
         {/* Footer */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900 rounded-b-xl shrink-0">
           <p className="text-xs text-slate-400">
-            {config.metrics.filter(m => m.name.trim()).length} metrics · {config.dimensions.filter(d => d.name.trim()).length} dimensions
+            Changes apply to all experiments on this board.
           </p>
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200">

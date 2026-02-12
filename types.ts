@@ -3,10 +3,13 @@ export type ExperimentStatus = 'idea' | 'hypothesis' | 'running' | 'complete' | 
 export type ExperimentResult = 'won' | 'lost' | 'inconclusive' | null;
 
 // --- V2 Configuration Types ---
+export type MetricFormat = 'number' | 'percent' | 'currency' | 'time';
+
 export interface MetricDefinition {
   id: string;
   name: string;
-  unit: string;
+  format: MetricFormat; // Changed from 'unit' to 'format'
+  suffix?: string;      // Optional custom text (e.g. "users")
   description?: string;
 }
 
@@ -150,8 +153,6 @@ export const calculateCompositeScore = (exp: Experiment, board?: Board): string 
    // If board uses custom dimensions, use them
    if (board?.config?.useCustomDimensions) {
        if (scores.length === 0) {
-           // Fallback to legacy ICE if custom dimensions enabled but no scores yet
-           // or return 0 if strictly enforcing custom
            return ((exp.ice_impact + exp.ice_confidence + exp.ice_ease) / 3).toFixed(1);
        }
        return (scores.reduce((acc, s) => acc + s.value, 0) / scores.length).toFixed(1);
