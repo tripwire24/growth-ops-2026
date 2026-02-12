@@ -1,4 +1,3 @@
-
 // ==========================================
 // ExperimentModal — Enhanced with Custom Metrics & Dimensions
 // ==========================================
@@ -234,7 +233,7 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({
                   disabled={isLocked}
                   className="w-full px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm disabled:opacity-60"
                 >
-                  {Object.entries(STATUS_CONFIG).map(([key, val]) => (
+                  {Object.entries(STATUS_CONFIG).map(([key, val]: [string, any]) => (
                     <option key={key} value={key}>{val.label}</option>
                   ))}
                 </select>
@@ -567,4 +566,4 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({
       </div>
     </div>
   );
-};
+}

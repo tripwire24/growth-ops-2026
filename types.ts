@@ -2,11 +2,48 @@
 export type ExperimentStatus = 'idea' | 'hypothesis' | 'running' | 'complete' | 'learnings';
 export type ExperimentResult = 'won' | 'lost' | 'inconclusive' | null;
 
+// --- V2 Configuration Types ---
+export interface MetricDefinition {
+  id: string;
+  name: string;
+  unit: string;
+  description?: string;
+}
+
+export interface DimensionDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  min: number;
+  max: number;
+}
+
+export interface BoardConfig {
+  metrics: MetricDefinition[];
+  dimensions: DimensionDefinition[];
+  useCustomDimensions: boolean;
+}
+
+export interface MetricValue {
+  metricId: string;
+  baseline: number | null;
+  target: number | null;
+  actual: number | null;
+}
+
+export interface DimensionScore {
+  dimensionId: string;
+  value: number;
+}
+
+// --- Main Types ---
+
 export interface Board {
   id: string;
   name: string;
   description: string;
   created_at: string;
+  config?: BoardConfig; // New in V2
 }
 
 export interface UserProfile {
@@ -14,7 +51,6 @@ export interface UserProfile {
   email: string;
   full_name?: string;
   avatar_url?: string;
-  // New Fields
   bio?: string;
   linkedin_url?: string;
   contact_email?: string;
@@ -31,13 +67,20 @@ export interface Comment {
 
 export interface Experiment {
   id: string;
-  board_id: string; // Link to Board
+  board_id: string; 
   title: string;
   description: string;
   status: ExperimentStatus;
+  
+  // Legacy ICE (Keep for backward compat)
   ice_impact: number;
   ice_confidence: number;
   ice_ease: number;
+  
+  // V2 Scoring & Metrics
+  dimensionScores?: DimensionScore[];
+  metricValues?: MetricValue[];
+
   market: string;
   type: string;
   tags: string[];
@@ -47,9 +90,10 @@ export interface Experiment {
   result: ExperimentResult;
   owner: string; 
   comments: Comment[];
-  // UI Helper
   boardName?: string;
 }
+
+// --- Constants & Helpers ---
 
 export const STATUS_CONFIG: Record<ExperimentStatus, { label: string; color: string; bg: string; border: string; darkColor: string; darkBg: string; darkBorder: string }> = {
   idea: { 
@@ -86,4 +130,33 @@ export const RESULT_CONFIG: Record<string, { label: string; color: string; bg: s
 };
 
 export const MARKETS = ['US', 'UK', 'CA', 'AU', 'NZ', 'SG'];
-export const TYPES = ['Acquisition', 'Retention', 'Monetization', 'Product'];
+export const TYPES = ['Acquisition', 'Retention', 'Monetization', 'Product', 'Referral'];
+
+export const DEFAULT_DIMENSIONS: DimensionDefinition[] = [
+  { id: 'ice_impact', name: 'Impact', description: 'How much will this move the needle?', min: 1, max: 10 },
+  { id: 'ice_confidence', name: 'Confidence', description: 'How sure are we?', min: 1, max: 10 },
+  { id: 'ice_ease', name: 'Ease', description: 'How easy is it?', min: 1, max: 10 },
+];
+
+export const DEFAULT_BOARD_CONFIG: BoardConfig = {
+  metrics: [],
+  dimensions: DEFAULT_DIMENSIONS,
+  useCustomDimensions: false,
+};
+
+export const calculateCompositeScore = (exp: Experiment, board?: Board): string => {
+   const scores = exp.dimensionScores || [];
+   
+   // If board uses custom dimensions, use them
+   if (board?.config?.useCustomDimensions) {
+       if (scores.length === 0) {
+           // Fallback to legacy ICE if custom dimensions enabled but no scores yet
+           // or return 0 if strictly enforcing custom
+           return ((exp.ice_impact + exp.ice_confidence + exp.ice_ease) / 3).toFixed(1);
+       }
+       return (scores.reduce((acc, s) => acc + s.value, 0) / scores.length).toFixed(1);
+   }
+   
+   // Default ICE
+   return ((exp.ice_impact + exp.ice_confidence + exp.ice_ease) / 3).toFixed(1);
+}

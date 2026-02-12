@@ -1,8 +1,11 @@
 
+// ==========================================
+// VaultTable.tsx — Enhanced with column sorting
+// ==========================================
 import React, { useState, useMemo } from 'react';
 import { Experiment, MARKETS, TYPES, STATUS_CONFIG, ExperimentStatus, RESULT_CONFIG } from '../types';
 import { ICEBadge } from './ICEBadge';
-import { Search, Lock, Trash2 } from 'lucide-react';
+import { Search, Lock, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface VaultTableProps {
   experiments: Experiment[];
@@ -10,15 +13,39 @@ interface VaultTableProps {
   onDelete: (id: string) => void;
 }
 
+type SortField = 'title' | 'status' | 'result' | 'ice' | 'market' | 'type' | 'created_at';
+type SortDirection = 'asc' | 'desc';
+
 export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit, onDelete }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [resultFilter, setResultFilter] = useState<string>('all');
   const [marketFilter, setMarketFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
-  const filteredExperiments = useMemo(() => {
-    return experiments.filter(exp => {
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const SortIcon: React.FC<{ field: SortField }> = ({ field }) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="text-slate-300 dark:text-slate-600" />;
+    return sortDirection === 'asc' 
+      ? <ArrowUp size={12} className="text-indigo-500" /> 
+      : <ArrowDown size={12} className="text-indigo-500" />;
+  };
+
+  const filteredAndSortedExperiments = useMemo(() => {
+    // Filter
+    const filtered = experiments.filter(exp => {
       const matchesSearch = exp.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             exp.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             exp.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -28,7 +55,47 @@ export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit, onD
       const matchesType = typeFilter === 'all' || exp.type === typeFilter;
       return matchesSearch && matchesStatus && matchesResult && matchesMarket && matchesType;
     });
-  }, [experiments, searchTerm, statusFilter, resultFilter, marketFilter, typeFilter]);
+
+    // Sort
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'title':
+          comparison = a.title.localeCompare(b.title);
+          break;
+        case 'status': {
+          const statusOrder: Record<string, number> = { idea: 0, hypothesis: 1, running: 2, complete: 3, learnings: 4 };
+          comparison = (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+          break;
+        }
+        case 'result': {
+          const resultOrder: Record<string, number> = { won: 0, lost: 1, inconclusive: 2 };
+          const aVal = a.result ? resultOrder[a.result] ?? 3 : 3;
+          const bVal = b.result ? resultOrder[b.result] ?? 3 : 3;
+          comparison = aVal - bVal;
+          break;
+        }
+        case 'ice': {
+          const aIce = (a.ice_impact + a.ice_confidence + a.ice_ease) / 3;
+          const bIce = (b.ice_impact + b.ice_confidence + b.ice_ease) / 3;
+          comparison = aIce - bIce;
+          break;
+        }
+        case 'market':
+          comparison = a.market.localeCompare(b.market);
+          break;
+        case 'type':
+          comparison = a.type.localeCompare(b.type);
+          break;
+        case 'created_at':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [experiments, searchTerm, statusFilter, resultFilter, marketFilter, typeFilter, sortField, sortDirection]);
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -101,20 +168,48 @@ export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit, onD
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider shadow-sm">
             <tr>
-              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Title</th>
+              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">
+                <button onClick={() => handleSort('title')} className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                  Title <SortIcon field="title" />
+                </button>
+              </th>
               <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Board</th>
-              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Status</th>
-              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Outcome</th>
-              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">ICE Score</th>
-              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Market</th>
-              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Type</th>
-              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">Created</th>
+              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">
+                <button onClick={() => handleSort('status')} className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                  Status <SortIcon field="status" />
+                </button>
+              </th>
+              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">
+                <button onClick={() => handleSort('result')} className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                  Outcome <SortIcon field="result" />
+                </button>
+              </th>
+              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">
+                <button onClick={() => handleSort('ice')} className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                  ICE Score <SortIcon field="ice" />
+                </button>
+              </th>
+              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">
+                <button onClick={() => handleSort('market')} className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                  Market <SortIcon field="market" />
+                </button>
+              </th>
+              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">
+                <button onClick={() => handleSort('type')} className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                  Type <SortIcon field="type" />
+                </button>
+              </th>
+              <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700">
+                <button onClick={() => handleSort('created_at')} className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                  Created <SortIcon field="created_at" />
+                </button>
+              </th>
               <th className="px-6 py-3 border-b border-slate-200 dark:border-slate-700 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
-            {filteredExperiments.map(exp => (
-              <tr key={exp.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${exp.archived ? 'opacity-80 bg-slate-50/50 dark:bg-slate-900/50' : ''}`}>
+            {filteredAndSortedExperiments.map(exp => (
+              <tr key={exp.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${exp.archived ? 'opacity-80 bg-slate-50/50 dark:bg-slate-900/50' : ''}`} onClick={() => onEdit(exp)}>
                 <td className="px-6 py-3 font-medium text-slate-900 dark:text-slate-100">
                   <div className="flex items-center gap-2">
                     {exp.title}
@@ -149,7 +244,7 @@ export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit, onD
                 </td>
                 <td className="px-6 py-3 text-right flex justify-end gap-3 items-center">
                   <button 
-                    onClick={() => onEdit(exp)}
+                    onClick={(e) => { e.stopPropagation(); onEdit(exp); }}
                     className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 font-medium text-xs"
                   >
                     {exp.locked ? 'View' : 'Edit'}
@@ -164,7 +259,7 @@ export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit, onD
                 </td>
               </tr>
             ))}
-            {filteredExperiments.length === 0 && (
+            {filteredAndSortedExperiments.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-6 py-12 text-center text-slate-400 dark:text-slate-500">
                   No experiments found matching filters.
@@ -175,8 +270,12 @@ export const VaultTable: React.FC<VaultTableProps> = ({ experiments, onEdit, onD
         </table>
       </div>
       <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs text-slate-500 dark:text-slate-400 flex justify-between">
-        <span>Showing {filteredExperiments.length} results</span>
-        <span>Page 1 of 1</span>
+        <span>Showing {filteredAndSortedExperiments.length} of {experiments.length} results</span>
+        <span>
+          {sortField !== 'created_at' || sortDirection !== 'desc' 
+            ? `Sorted by ${sortField} (${sortDirection})` 
+            : 'Newest first'}
+        </span>
       </div>
     </div>
   );

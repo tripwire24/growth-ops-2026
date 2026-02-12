@@ -1,13 +1,16 @@
 
+// ==========================================
+// Layout.tsx — Updated with Academy tab + Board Settings button
+// ==========================================
 import React, { useEffect, useState } from 'react';
-import { Layers, Database, Plus, Menu, User, BarChart2, Moon, Sun, AlertTriangle, Layout as LayoutIcon, Settings, ChevronRight, LogOut } from 'lucide-react';
+import { Layers, Database, Plus, Menu, User, BarChart2, Moon, Sun, AlertTriangle, Layout as LayoutIcon, Settings, ChevronRight, LogOut, GraduationCap, Sliders } from 'lucide-react';
 import { Board, UserProfile } from '../types';
 import { ProfileModal } from './ProfileModal';
 
 interface LayoutProps {
   children: React.ReactNode;
-  activeTab: 'kanban' | 'vault' | 'analytics';
-  setActiveTab: (tab: 'kanban' | 'vault' | 'analytics') => void;
+  activeTab: 'kanban' | 'vault' | 'analytics' | 'academy';
+  setActiveTab: (tab: 'kanban' | 'vault' | 'analytics' | 'academy') => void;
   onNewExperiment: () => void;
   isMockMode?: boolean;
   onConnect?: () => void;
@@ -17,6 +20,7 @@ interface LayoutProps {
   onSwitchBoard: (id: string) => void;
   onCreateBoard: () => void;
   onEditBoard: (board: Board) => void;
+  onOpenBoardSettings?: () => void;
   // Profile Props
   userProfile: UserProfile | null;
   onUpdateProfile: (updates: Partial<UserProfile>, avatarFile?: File) => Promise<void>;
@@ -57,7 +61,7 @@ const ThemeToggle = () => {
 
 export const Layout: React.FC<LayoutProps> = ({ 
   children, activeTab, setActiveTab, onNewExperiment, isMockMode, onConnect,
-  boards, activeBoardId, onSwitchBoard, onCreateBoard, onEditBoard,
+  boards, activeBoardId, onSwitchBoard, onCreateBoard, onEditBoard, onOpenBoardSettings,
   userProfile, onUpdateProfile, onLogout
 }) => {
   
@@ -123,6 +127,19 @@ export const Layout: React.FC<LayoutProps> = ({
            </div>
         </div>
 
+        {/* Board Settings Button */}
+        {onOpenBoardSettings && currentBoard && (
+          <div className="px-4 pb-2">
+            <button
+              onClick={onOpenBoardSettings}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors text-sm"
+            >
+              <Sliders size={14} />
+              <span>Board Settings</span>
+            </button>
+          </div>
+        )}
+
         <nav className="flex-1 px-4 py-2 space-y-2">
           <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-4 px-2">Views</div>
           <button 
@@ -148,6 +165,15 @@ export const Layout: React.FC<LayoutProps> = ({
             <BarChart2 size={18} />
             <span className="font-medium text-sm">Analytics</span>
           </button>
+
+          {/* Academy Tab */}
+          <button 
+            onClick={() => setActiveTab('academy')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${activeTab === 'academy' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'}`}
+          >
+            <GraduationCap size={18} />
+            <span className="font-medium text-sm">Academy</span>
+          </button>
         </nav>
 
         {isMockMode && (
@@ -159,25 +185,23 @@ export const Layout: React.FC<LayoutProps> = ({
                  <p className="opacity-80 leading-relaxed">Data is local. Connect Supabase to save & sync.</p>
                </div>
              </div>
-             <button 
-               onClick={onConnect}
-               className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded shadow-sm transition-colors"
-             >
-               Connect Database
+             <button onClick={onConnect} className="w-full bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-semibold py-2 rounded-md transition-colors flex items-center justify-center gap-2">
+               <Database size={12} /> Connect Database
              </button>
           </div>
         )}
 
-        <div className="p-4 border-t border-slate-800 flex items-center gap-2">
-           <button 
+        {/* User Profile Area */}
+        <div className="p-4 border-t border-slate-800 flex items-center gap-3">
+          <button 
              onClick={() => setIsProfileOpen(true)}
-             className="flex-1 flex items-center gap-3 text-slate-400 hover:text-white transition-colors text-left group"
-           >
-             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0 overflow-hidden border border-slate-600 group-hover:border-indigo-500 transition-colors">
+             className="group flex items-center gap-3 flex-1 min-w-0 p-1 -m-1 rounded-md hover:bg-slate-800 transition-colors"
+          >
+             <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden">
                {userProfile?.avatar_url ? (
-                 <img src={userProfile.avatar_url} alt="Av" className="w-full h-full object-cover" />
+                 <img src={userProfile.avatar_url} alt="" className="w-full h-full object-cover" />
                ) : (
-                 <User size={16} />
+                 displayName ? displayName.charAt(0).toUpperCase() : <User size={16} />
                )}
              </div>
              <div className="text-sm overflow-hidden flex-1">
@@ -206,6 +230,9 @@ export const Layout: React.FC<LayoutProps> = ({
         {/* Mobile Header */}
         <header className="md:hidden flex items-center justify-between p-4 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-2">
+             <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+               <span className="font-bold text-xs text-white">G</span>
+             </div>
              <span className="font-bold text-sm bg-slate-800 px-2 py-1 rounded truncate max-w-[120px]">
                {currentBoard?.name}
              </span>
@@ -245,13 +272,22 @@ export const Layout: React.FC<LayoutProps> = ({
           >
             Analytics
           </button>
+          <button 
+            onClick={() => setActiveTab('academy')}
+            className={`flex-1 py-3 text-sm font-medium border-b-2 ${activeTab === 'academy' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 dark:text-slate-400'}`}
+          >
+            Academy
+          </button>
         </div>
 
         {/* Toolbar Area */}
         <div className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-xl font-bold text-slate-800 dark:text-white hidden md:block">
-              {activeTab === 'kanban' ? currentBoard?.name : activeTab === 'vault' ? 'Knowledge Vault' : 'Analytics Dashboard'}
+              {activeTab === 'kanban' ? currentBoard?.name 
+                : activeTab === 'vault' ? 'Knowledge Vault' 
+                : activeTab === 'analytics' ? 'Analytics Dashboard'
+                : 'Growth Academy'}
             </h2>
             {activeTab === 'kanban' && currentBoard?.description && (
               <p className="text-xs text-slate-500 hidden md:block mt-0.5">{currentBoard.description}</p>
@@ -259,17 +295,22 @@ export const Layout: React.FC<LayoutProps> = ({
              {(activeTab === 'vault' || activeTab === 'analytics') && currentBoard && (
                <p className="text-xs text-slate-500 hidden md:block mt-0.5">Filtered by: <span className="font-semibold">{currentBoard.name}</span></p>
             )}
+            {activeTab === 'academy' && (
+              <p className="text-xs text-slate-500 hidden md:block mt-0.5">Learn growth hacking fundamentals</p>
+            )}
           </div>
           
           <div className="flex gap-3 ml-auto">
-             <button 
-              onClick={onNewExperiment}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2 shadow-sm transition-colors"
-            >
-              <Plus size={16} />
-              <span className="hidden sm:inline">New Experiment</span>
-              <span className="sm:hidden">New</span>
-            </button>
+             {activeTab !== 'academy' && (
+               <button 
+                onClick={onNewExperiment}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2 shadow-sm transition-colors"
+               >
+                <Plus size={16} />
+                <span className="hidden sm:inline">New Experiment</span>
+                <span className="sm:hidden">New</span>
+               </button>
+             )}
           </div>
         </div>
 

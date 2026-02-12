@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { Experiment, ExperimentStatus, Comment, Board, UserProfile } from '../types';
+import { Experiment, ExperimentStatus, Comment, Board, UserProfile, DEFAULT_BOARD_CONFIG } from '../types';
 import { INITIAL_EXPERIMENTS, INITIAL_BOARDS } from '../services/mockData';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { useAuth } from './useAuth';
@@ -15,7 +15,7 @@ export function useExperiments(isDemoMode: boolean = false, userProfile: UserPro
   const fetchData = useCallback(async () => {
     if (isDemoMode || !isSupabaseConfigured || !supabase) {
       // MOCK DATA
-      setBoards(INITIAL_BOARDS);
+      setBoards(INITIAL_BOARDS.map(b => ({ ...b, config: b.config || DEFAULT_BOARD_CONFIG })));
       
       const enrichedExperiments = INITIAL_EXPERIMENTS.map(exp => ({
         ...exp,
@@ -28,7 +28,12 @@ export function useExperiments(isDemoMode: boolean = false, userProfile: UserPro
     }
 
     try {
-      setBoards(INITIAL_BOARDS);
+      // Fetch Boards first? For now we use mock boards even in real mode 
+      // OR if you have a boards table in supabase, fetch it here.
+      // Assuming we only have experiments table for now and boards are static/local or need a table.
+      // For this implementation, I will keep boards local/mock but experiments real.
+      // *Ideal world: fetch boards from DB*
+      setBoards(INITIAL_BOARDS.map(b => ({ ...b, config: b.config || DEFAULT_BOARD_CONFIG })));
 
       // Fetch Experiments with real owner names
       const { data, error } = await supabase
@@ -90,6 +95,7 @@ export function useExperiments(isDemoMode: boolean = false, userProfile: UserPro
     ));
 
     if (!isDemoMode && isSupabaseConfigured && supabase) {
+        // Exclude UI fields and join fields
         const { owner, comments, boardName, ...dbPayload } = updatedExp;
         await supabase.from('experiments').update(dbPayload).eq('id', updatedExp.id);
     }
@@ -190,14 +196,16 @@ export function useExperiments(isDemoMode: boolean = false, userProfile: UserPro
       id: Math.random().toString(36).substr(2, 9),
       name,
       description,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      config: DEFAULT_BOARD_CONFIG
     };
     setBoards(prev => [...prev, newBoard]);
     return newBoard.id; 
   }, []);
 
-  const updateBoard = useCallback((id: string, name: string, description: string) => {
-    setBoards(prev => prev.map(b => b.id === id ? { ...b, name, description } : b));
+  const updateBoard = useCallback((id: string, updates: Partial<Board>) => {
+    setBoards(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+    // In a real app with 'boards' table, we would update supabase here.
   }, []);
 
   return {

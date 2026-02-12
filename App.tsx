@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { KanbanBoard } from './components/KanbanBoard';
@@ -15,7 +14,7 @@ export default function App() {
   const { user, profile, loading: authLoading, updateProfile, signOut } = useAuth();
   const { experiments, boards, updateStatus, updateExperiment, addExperiment, archiveExperiment, completeExperiment, deleteExperiment, addBoard, updateBoard } = useExperiments();
   
-  const [activeTab, setActiveTab] = useState<'kanban' | 'vault' | 'analytics'>('kanban');
+  const [activeTab, setActiveTab] = useState<'kanban' | 'vault' | 'analytics' | 'academy'>('kanban');
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewingSetup, setViewingSetup] = useState(false);
@@ -87,7 +86,7 @@ export default function App() {
 
   const handleEditBoard = (board: Board) => {
     const name = prompt("Update Board Name:", board.name);
-    if (name) updateBoard(board.id, name, board.description);
+    if (name) updateBoard(board.id, { name });
   };
 
   return (

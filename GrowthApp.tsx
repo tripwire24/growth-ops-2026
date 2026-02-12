@@ -4,13 +4,15 @@ import { Layout } from './components/Layout';
 import { KanbanBoard } from './components/KanbanBoard';
 import { VaultTable } from './components/VaultTable';
 import { AnalyticsView } from './components/AnalyticsView';
+import { AcademyView } from './components/AcademyView';
 import { ExperimentModal } from './components/ExperimentModal';
 import { BoardModal } from './components/BoardModal';
+import { BoardSettingsModal } from './components/BoardSettingsModal';
 import { AuthPage } from './components/AuthPage';
 import { useExperiments } from './hooks/useExperiments';
 import { useAuth } from './hooks/useAuth';
 import { isSupabaseConfigured } from './services/supabase';
-import { Experiment, Board, UserProfile } from './types';
+import { Experiment, Board, UserProfile, BoardConfig } from './types';
 import { CustomAlert } from './components/CustomAlert';
 
 export default function GrowthApp() {
@@ -31,17 +33,18 @@ export default function GrowthApp() {
   // Determine active profile (Auth or Guest)
   const activeProfile = isGuestMode ? guestProfile : authProfile;
 
-  // Data Hook - Now accepts the active profile for attribution
+  // Data Hook
   const { experiments, boards, updateStatus, updateExperiment, addExperiment, archiveExperiment, deleteExperiment, completeExperiment, addBoard, updateBoard } = useExperiments(isGuestMode, activeProfile);
   
   // UI State
-  const [activeTab, setActiveTab] = useState<'kanban' | 'vault' | 'analytics'>('kanban');
+  const [activeTab, setActiveTab] = useState<'kanban' | 'vault' | 'analytics' | 'academy'>('kanban');
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [isExperimentModalOpen, setIsExperimentModalOpen] = useState(false);
   
   // Board State
   const [activeBoardId, setActiveBoardId] = useState<string>('');
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
+  const [isBoardSettingsOpen, setIsBoardSettingsOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<Board | undefined>(undefined);
 
   const [viewingSetup, setViewingSetup] = useState(false);
@@ -58,9 +61,9 @@ export default function GrowthApp() {
     }
   }, [boards, activeBoardId]);
 
-  // Debug log to confirm correct app is loaded
+  // Debug log
   useEffect(() => {
-    console.log("Growth Ops PWA Loaded Successfully");
+    console.log("Growth Ops PWA Loaded Successfully (V2)");
   }, []);
 
   // 1. Loading State
@@ -73,12 +76,12 @@ export default function GrowthApp() {
       );
   }
 
-  // 2. Auth Enforced (Only if configured, not loading, and NOT in guest mode)
+  // 2. Auth Enforced
   if (isSupabaseConfigured && !user && !isGuestMode) {
     return <AuthPage onContinueAsGuest={() => setIsGuestMode(true)} />;
   }
 
-  // 3. Setup/Connect Screen (Triggered manually from Mock Mode)
+  // 3. Setup/Connect Screen
   if (!isSupabaseConfigured && viewingSetup) {
     return <AuthPage onBackToDemo={() => setViewingSetup(false)} />;
   }
@@ -87,18 +90,14 @@ export default function GrowthApp() {
 
   const handleUpdateProfile = async (updates: Partial<UserProfile>, avatarFile?: File) => {
     if (isGuestMode) {
-      // Logic to handle "Simulated Upload" in Guest Mode (Base64)
       let newAvatarUrl = updates.avatar_url || guestProfile.avatar_url;
-      
       if (avatarFile) {
-        // Convert to Base64 for local display
         const reader = new FileReader();
         newAvatarUrl = await new Promise((resolve) => {
             reader.onload = (e) => resolve(e.target?.result as string);
             reader.readAsDataURL(avatarFile);
         });
       }
-
       setGuestProfile(prev => ({ ...prev, ...updates, avatar_url: newAvatarUrl }));
     } else {
       await updateAuthProfile(updates, avatarFile);
@@ -124,9 +123,8 @@ export default function GrowthApp() {
         return;
     }
 
-    // Create a draft experiment template
     const draftExperiment: Experiment = {
-        id: 'new', // Flag for creation
+        id: 'new',
         board_id: activeBoardId,
         title: '',
         description: '',
@@ -152,8 +150,6 @@ export default function GrowthApp() {
 
   const handleSaveExperiment = async (exp: Experiment) => {
       if (exp.id === 'new') {
-          // CREATE MODE
-          // Validation
           if (!exp.title.trim()) {
               setAlertConfig({
                   isOpen: true,
@@ -174,10 +170,12 @@ export default function GrowthApp() {
               ice_ease: exp.ice_ease,
               market: exp.market,
               type: exp.type,
-              tags: exp.tags
+              tags: exp.tags,
+              // Pass new fields
+              metricValues: exp.metricValues,
+              dimensionScores: exp.dimensionScores
           });
       } else {
-          // UPDATE MODE
           await updateExperiment(exp);
       }
       setIsExperimentModalOpen(false);
@@ -200,15 +198,20 @@ export default function GrowthApp() {
 
   const handleSaveBoard = (name: string, description: string) => {
       if (editingBoard) {
-          updateBoard(editingBoard.id, name, description);
+          updateBoard(editingBoard.id, { name, description });
       } else {
           const newId = addBoard(name, description);
           setActiveBoardId(newId);
       }
   };
 
+  const handleSaveBoardConfig = (boardId: string, config: BoardConfig) => {
+     updateBoard(boardId, { config });
+  };
+
   // Filter experiments for ALL views based on Board
   const boardExperiments = experiments.filter(e => e.board_id === activeBoardId);
+  const activeBoard = boards.find(b => b.id === activeBoardId);
 
   return (
     <Layout 
@@ -223,6 +226,7 @@ export default function GrowthApp() {
       onSwitchBoard={setActiveBoardId}
       onCreateBoard={handleCreateBoard}
       onEditBoard={handleEditBoard}
+      onOpenBoardSettings={() => setIsBoardSettingsOpen(true)}
       // Profile Props
       userProfile={activeProfile}
       onUpdateProfile={handleUpdateProfile}
@@ -240,7 +244,7 @@ export default function GrowthApp() {
       {activeTab === 'vault' && (
         <div className="p-6 h-full overflow-hidden">
           <VaultTable 
-            experiments={boardExperiments} // PASSING FILTERED LIST
+            experiments={boardExperiments}
             onEdit={openExperiment}
             onDelete={deleteExperiment}
           />
@@ -248,7 +252,14 @@ export default function GrowthApp() {
       )}
 
       {activeTab === 'analytics' && (
-        <AnalyticsView experiments={boardExperiments} /> // PASSING FILTERED LIST
+        <AnalyticsView 
+          experiments={boardExperiments} 
+          board={activeBoard}
+        />
+      )}
+
+      {activeTab === 'academy' && (
+        <AcademyView />
       )}
 
       {/* Modals */}
@@ -260,6 +271,7 @@ export default function GrowthApp() {
         onArchive={archiveExperiment}
         onComplete={completeExperiment}
         onDelete={deleteExperiment}
+        board={activeBoard} // Pass board to access config
       />
 
       <BoardModal 
@@ -269,6 +281,13 @@ export default function GrowthApp() {
         initialBoard={editingBoard}
       />
       
+      <BoardSettingsModal 
+        isOpen={isBoardSettingsOpen}
+        onClose={() => setIsBoardSettingsOpen(false)}
+        board={activeBoard || null}
+        onSave={handleSaveBoardConfig}
+      />
+
       <CustomAlert 
         isOpen={alertConfig.isOpen}
         title={alertConfig.title}
