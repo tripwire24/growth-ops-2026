@@ -12,14 +12,19 @@ export function useAuth() {
   const fetchProfile = async (userId: string, email: string) => {
     if (!supabase) return;
     
+    // Try to fetch profile
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching profile:', error);
+    if (error) {
+       // If the error is 'PGRST116' it means no rows returned, which is fine (new user).
+       // If it is '42P01' (undefined_table) or schema cache error, we log it for the developer.
+       if (error.code !== 'PGRST116') {
+         console.error('Fetch Profile Error:', error);
+       }
     }
     
     if (data) {
@@ -33,7 +38,8 @@ export function useAuth() {
         contact_email: data.contact_email
       });
     } else {
-        // Fallback if profile row doesn't exist yet
+        // Fallback: If profile row doesn't exist, we create a temporary local profile object
+        // This will be saved to DB on the first "Update Profile" action.
         setProfile({ id: userId, email });
     }
   };
@@ -138,7 +144,7 @@ export function useAuth() {
     // Explicitly construct the DB payload to control what is sent
     const dbUpdates = {
       id: user.id,
-      updated_at: new Date().toISOString(), // Use ISO string for SQL timestamp
+      updated_at: new Date().toISOString(),
       full_name: updates.full_name,
       avatar_url: newAvatarUrl,
       bio: updates.bio,
@@ -146,15 +152,18 @@ export function useAuth() {
       contact_email: updates.contact_email
     };
 
+    // Use Upsert to handle both insert (new profile) and update (existing profile)
     const { error } = await supabase.from('profiles').upsert(dbUpdates);
     
     if (error) {
         // Log the full error to help debug SQL/Schema issues
         console.error("Supabase Upsert Error:", error);
+        
+        // Pass the error up so UI can display it
         throw new Error(error.message);
     }
 
-    // Update local state immediately
+    // Update local state immediately to reflect changes in UI
     setProfile(prev => prev ? { ...prev, ...updates, avatar_url: newAvatarUrl || prev.avatar_url } : null);
   };
   
