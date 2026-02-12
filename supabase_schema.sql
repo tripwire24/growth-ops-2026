@@ -83,3 +83,18 @@ create trigger on_auth_user_created
 -- create policy "Avatar images are publicly accessible." on storage.objects for select using ( bucket_id = 'avatars' );
 -- create policy "Anyone can upload an avatar." on storage.objects for insert with check ( bucket_id = 'avatars' );
 -- create policy "Anyone can update an avatar." on storage.objects for update with check ( bucket_id = 'avatars' );
+
+
+-- 9. SAFE MIGRATION: Run this to update existing tables without errors
+do $$
+begin
+    if not exists (select 1 from information_schema.columns where table_name = 'profiles' and column_name = 'bio') then
+        alter table profiles add column bio text;
+    end if;
+    if not exists (select 1 from information_schema.columns where table_name = 'profiles' and column_name = 'linkedin_url') then
+        alter table profiles add column linkedin_url text;
+    end if;
+    if not exists (select 1 from information_schema.columns where table_name = 'profiles' and column_name = 'contact_email') then
+        alter table profiles add column contact_email text;
+    end if;
+end $$;

@@ -135,9 +135,10 @@ export function useAuth() {
         }
     }
     
+    // Explicitly construct the DB payload to control what is sent
     const dbUpdates = {
       id: user.id,
-      updated_at: new Date(),
+      updated_at: new Date().toISOString(), // Use ISO string for SQL timestamp
       full_name: updates.full_name,
       avatar_url: newAvatarUrl,
       bio: updates.bio,
@@ -146,7 +147,12 @@ export function useAuth() {
     };
 
     const { error } = await supabase.from('profiles').upsert(dbUpdates);
-    if (error) throw error;
+    
+    if (error) {
+        // Log the full error to help debug SQL/Schema issues
+        console.error("Supabase Upsert Error:", error);
+        throw new Error(error.message);
+    }
 
     // Update local state immediately
     setProfile(prev => prev ? { ...prev, ...updates, avatar_url: newAvatarUrl || prev.avatar_url } : null);

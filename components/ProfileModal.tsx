@@ -51,9 +51,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, pro
     try {
       await onSave(formData, avatarFile);
       onClose();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to update profile');
+    } catch (error: any) {
+      console.error("Profile update failed:", error);
+      // Display the specific error message from the backend/Supabase
+      alert(`Failed to update profile: ${error.message || 'Unknown error. Check console for details.'}`);
     } finally {
       setLoading(false);
     }
