@@ -120,7 +120,7 @@ export function useExperiments(isDemoMode: boolean = false, userProfile: UserPro
     }
   }, [isDemoMode]);
 
-  const addExperiment = useCallback(async (experiment: Omit<Experiment, 'id' | 'created_at' | 'archived' | 'result' | 'owner' | 'comments' | 'tags' | 'locked' | 'boardName'>) => {
+  const addExperiment = useCallback(async (experiment: Omit<Experiment, 'id' | 'created_at' | 'archived' | 'result' | 'owner' | 'comments' | 'locked' | 'boardName'>) => {
     const tempId = Math.random().toString(36).substr(2, 9);
     const boardName = boards.find(b => b.id === experiment.board_id)?.name;
     
@@ -134,7 +134,6 @@ export function useExperiments(isDemoMode: boolean = false, userProfile: UserPro
       archived: false,
       locked: false,
       result: null,
-      tags: [],
       owner: ownerName, 
       comments: [],
       boardName

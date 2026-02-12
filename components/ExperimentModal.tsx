@@ -28,6 +28,8 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
 
   if (!isOpen || !formData) return null;
 
+  const isNew = formData.id === 'new';
+
   const handleChange = (field: keyof Experiment, value: any) => {
     if (formData.locked) return; // Prevent edits if locked
     setFormData(prev => prev ? { ...prev, [field]: value } : null);
@@ -87,7 +89,7 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
              <div>
                 <div className="flex items-center gap-3">
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                    {isLocked ? 'Experiment Archived' : 'Edit Experiment'}
+                    {isNew ? 'New Experiment' : isLocked ? 'Experiment Archived' : 'Edit Experiment'}
                   </h2>
                   {isLocked && (
                     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 text-xs font-medium">
@@ -125,7 +127,9 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                   value={formData.title} 
                   onChange={e => handleChange('title', e.target.value)}
                   disabled={isLocked}
-                  className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                  placeholder="e.g. Test new landing page headline"
+                  autoFocus={isNew}
+                  className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed placeholder:text-slate-300"
                 />
               </div>
               
@@ -135,8 +139,9 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                   value={formData.description} 
                   onChange={e => handleChange('description', e.target.value)}
                   disabled={isLocked}
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+                  rows={isNew ? 4 : 3}
+                  placeholder="Describe your hypothesis and what you expect to happen..."
+                  className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none resize-none disabled:opacity-60 disabled:cursor-not-allowed placeholder:text-slate-300"
                 />
               </div>
 
@@ -163,7 +168,7 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                       onChange={(e) => setTagInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                       placeholder="Add a tag..."
-                      className="flex-1 px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                      className="flex-1 px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none placeholder:text-slate-400"
                     />
                     <button onClick={handleAddTag} className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700">
                       <Plus size={16} />
@@ -242,11 +247,11 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                 <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{calculateICE()}</span>
               </div>
               <div className="space-y-4">
-                {[
+                {([
                   { label: 'Impact', key: 'ice_impact' }, 
                   { label: 'Confidence', key: 'ice_confidence' }, 
                   { label: 'Ease', key: 'ice_ease' }
-                ].map(metric => (
+                ] as const).map(metric => (
                   <div key={metric.key} className="flex items-center gap-4">
                     <label className="w-24 text-sm font-medium text-slate-600 dark:text-slate-400">{metric.label}</label>
                     <input 
@@ -254,11 +259,11 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                       min="1" 
                       max="10" 
                       disabled={isLocked}
-                      value={formData[metric.key as keyof Experiment] as number}
-                      onChange={e => handleChange(metric.key as keyof Experiment, parseInt(e.target.value))}
+                      value={formData[metric.key] as number}
+                      onChange={e => handleChange(metric.key, parseInt(e.target.value))}
                       className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600 disabled:opacity-50"
                     />
-                    <span className="w-8 text-center font-bold text-slate-700 dark:text-slate-300">{formData[metric.key as keyof Experiment]}</span>
+                    <span className="w-8 text-center font-bold text-slate-700 dark:text-slate-300">{formData[metric.key]}</span>
                   </div>
                 ))}
               </div>
@@ -284,56 +289,71 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
            </div>
            
            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {formData.comments.length === 0 && (
-                <div className="text-center py-10 text-slate-400 dark:text-slate-600 text-sm">
-                  No updates yet. <br/>Start the conversation!
-                </div>
+              {isNew ? (
+                 <div className="flex flex-col items-center justify-center h-full text-center p-6 text-slate-400">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                       <Save size={20} />
+                    </div>
+                    <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-1">Unsaved Experiment</h4>
+                    <p className="text-sm">Save this experiment to start adding comments and tracking progress.</p>
+                 </div>
+              ) : (
+                <>
+                  {formData.comments.length === 0 && (
+                    <div className="text-center py-10 text-slate-400 dark:text-slate-600 text-sm">
+                      No updates yet. <br/>Start the conversation!
+                    </div>
+                  )}
+                  {formData.comments.map(comment => (
+                    <div key={comment.id} className="flex gap-3 text-sm">
+                       <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center shrink-0 font-bold text-slate-500 text-xs">
+                         {comment.userName.charAt(0)}
+                       </div>
+                       <div className="flex-1 space-y-1">
+                          <div className="flex justify-between items-baseline">
+                             <span className="font-semibold text-slate-800 dark:text-slate-200">{comment.userName}</span>
+                             <span className="text-xs text-slate-400">{new Date(comment.timestamp).toLocaleDateString()}</span>
+                          </div>
+                          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{comment.text}</p>
+                       </div>
+                    </div>
+                  ))}
+                </>
               )}
-              {formData.comments.map(comment => (
-                <div key={comment.id} className="flex gap-3 text-sm">
-                   <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center shrink-0 font-bold text-slate-500 text-xs">
-                     {comment.userName.charAt(0)}
-                   </div>
-                   <div className="flex-1 space-y-1">
-                      <div className="flex justify-between items-baseline">
-                         <span className="font-semibold text-slate-800 dark:text-slate-200">{comment.userName}</span>
-                         <span className="text-xs text-slate-400">{new Date(comment.timestamp).toLocaleDateString()}</span>
-                      </div>
-                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{comment.text}</p>
-                   </div>
-                </div>
-              ))}
            </div>
 
            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <div className="flex items-end gap-2 bg-slate-50 dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                <textarea 
-                  className="flex-1 bg-transparent border-none focus:ring-0 resize-none text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 max-h-24 p-1"
-                  rows={2}
-                  placeholder="Type an update..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  onKeyDown={(e) => {
-                    if(e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleAddComment();
-                    }
-                  }}
-                />
-                <div className="flex gap-1">
-                   <button 
-                      onClick={handleAddComment}
-                      className="p-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      disabled={!newComment.trim()}
-                    >
-                      <Send size={16} />
-                   </button>
-                </div>
-              </div>
               
-              <div className="mt-4 flex flex-wrap justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800 gap-2">
+              {!isNew && (
+                <div className="flex items-end gap-2 bg-slate-50 dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <textarea 
+                    className="flex-1 bg-transparent border-none focus:ring-0 resize-none text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 max-h-24 p-1"
+                    rows={2}
+                    placeholder="Type an update..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => {
+                      if(e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleAddComment();
+                      }
+                    }}
+                  />
+                  <div className="flex gap-1">
+                     <button 
+                        onClick={handleAddComment}
+                        className="p-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        disabled={!newComment.trim()}
+                      >
+                        <Send size={16} />
+                     </button>
+                  </div>
+                </div>
+              )}
+              
+              <div className={`mt-4 flex flex-wrap justify-between items-center pt-2 ${!isNew ? 'border-t border-slate-100 dark:border-slate-800' : ''} gap-2`}>
                 {/* Workflow Actions */}
-                {!isLocked && (
+                {!isLocked && !isNew && (
                   <>
                     {/* Delete Button - Always available but guarded */}
                     <button 
@@ -395,19 +415,20 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ experiment, is
                       <button 
                         onClick={() => {
                           onSave(formData);
-                          onClose();
+                          // We don't close here for create mode if we want them to continue editing, 
+                          // but usually "Create" closes modal. The parent handles close.
                         }}
                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium shadow-sm transition-colors"
                       >
-                        Save
+                        {isNew ? 'Create Experiment' : 'Save'}
                       </button>
                     )}
-                    {isLocked && (
+                    {(isLocked || isNew) && (
                        <button 
                         onClick={onClose}
                         className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-md text-sm font-medium transition-colors"
                       >
-                        Close
+                        {isNew ? 'Cancel' : 'Close'}
                       </button>
                     )}
                 </div>

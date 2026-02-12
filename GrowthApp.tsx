@@ -11,6 +11,7 @@ import { useExperiments } from './hooks/useExperiments';
 import { useAuth } from './hooks/useAuth';
 import { isSupabaseConfigured } from './services/supabase';
 import { Experiment, Board, UserProfile } from './types';
+import { CustomAlert } from './components/CustomAlert';
 
 export default function GrowthApp() {
   const { user, profile: authProfile, loading: authLoading, updateProfile: updateAuthProfile, signOut } = useAuth();
@@ -44,6 +45,11 @@ export default function GrowthApp() {
   const [editingBoard, setEditingBoard] = useState<Board | undefined>(undefined);
 
   const [viewingSetup, setViewingSetup] = useState(false);
+  
+  // Alert State
+  const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'error' | 'success' | 'info'}>({
+    isOpen: false, title: '', message: '', type: 'info'
+  });
 
   // Initialize Active Board
   useEffect(() => {
@@ -108,25 +114,73 @@ export default function GrowthApp() {
   };
 
   const handleNewExperiment = () => {
-    const title = prompt("Enter experiment title:");
-    if (!title) return;
-    
     if (!activeBoardId) {
-        alert("Please create a board first.");
+        setAlertConfig({
+            isOpen: true, 
+            title: "No Board Selected", 
+            message: "Please create or select a board first.", 
+            type: 'error'
+        });
         return;
     }
 
-    addExperiment({
-      board_id: activeBoardId,
-      title,
-      description: 'Describe your hypothesis...',
-      status: 'idea',
-      ice_impact: 5,
-      ice_confidence: 5,
-      ice_ease: 5,
-      market: 'US',
-      type: 'Acquisition',
-    });
+    // Create a draft experiment template
+    const draftExperiment: Experiment = {
+        id: 'new', // Flag for creation
+        board_id: activeBoardId,
+        title: '',
+        description: '',
+        status: 'idea',
+        ice_impact: 5,
+        ice_confidence: 5,
+        ice_ease: 5,
+        market: 'US',
+        type: 'Acquisition',
+        tags: [],
+        created_at: new Date().toISOString(),
+        archived: false,
+        locked: false,
+        result: null,
+        owner: activeProfile?.full_name || user?.email || 'Me',
+        comments: [],
+        boardName: boards.find(b => b.id === activeBoardId)?.name
+    };
+
+    setSelectedExperiment(draftExperiment);
+    setIsExperimentModalOpen(true);
+  };
+
+  const handleSaveExperiment = async (exp: Experiment) => {
+      if (exp.id === 'new') {
+          // CREATE MODE
+          // Validation
+          if (!exp.title.trim()) {
+              setAlertConfig({
+                  isOpen: true,
+                  title: "Title Required",
+                  message: "Please enter a title for your experiment.",
+                  type: 'error'
+              });
+              return;
+          }
+
+          await addExperiment({
+              board_id: exp.board_id,
+              title: exp.title,
+              description: exp.description || '',
+              status: exp.status,
+              ice_impact: exp.ice_impact,
+              ice_confidence: exp.ice_confidence,
+              ice_ease: exp.ice_ease,
+              market: exp.market,
+              type: exp.type,
+              tags: exp.tags
+          });
+      } else {
+          // UPDATE MODE
+          await updateExperiment(exp);
+      }
+      setIsExperimentModalOpen(false);
   };
 
   const openExperiment = (exp: Experiment) => {
@@ -202,7 +256,7 @@ export default function GrowthApp() {
         experiment={selectedExperiment}
         isOpen={isExperimentModalOpen}
         onClose={() => setIsExperimentModalOpen(false)}
-        onSave={updateExperiment}
+        onSave={handleSaveExperiment}
         onArchive={archiveExperiment}
         onComplete={completeExperiment}
         onDelete={deleteExperiment}
@@ -213,6 +267,14 @@ export default function GrowthApp() {
         onClose={() => setIsBoardModalOpen(false)}
         onSave={handleSaveBoard}
         initialBoard={editingBoard}
+      />
+      
+      <CustomAlert 
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
       />
     </Layout>
   );

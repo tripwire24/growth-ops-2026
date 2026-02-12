@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile } from '../types';
-import { X, User, Camera, Upload, Linkedin, Mail, AlignLeft } from 'lucide-react';
+import { X, User, Camera, Upload, Linkedin, Mail, AlignLeft, LogOut } from 'lucide-react';
 import { CustomAlert } from './CustomAlert';
 
 interface ProfileModalProps {
@@ -62,14 +62,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, pro
         message: 'Your profile details have been saved successfully.',
         type: 'success'
       });
-      // Don't close immediately, let user see success
     } catch (error: any) {
       console.error("Profile update failed:", error);
       
       let friendlyMessage = error.message;
       
-      if (error.message.includes('schema cache') || error.message.includes('relation "public.profiles" does not exist')) {
-        friendlyMessage = "Database Setup Required: The 'profiles' table is missing. Please run the SQL migration script in your Supabase SQL Editor.";
+      // Smart Error Messages for specific Supabase issues
+      if (
+        error.message.includes('schema cache') || 
+        error.message.includes('relation "public.profiles" does not exist') ||
+        error.message.includes('42P01')
+      ) {
+        friendlyMessage = "Database Missing Tables: The 'profiles' table does not exist. Please go to Supabase Dashboard -> SQL Editor, paste the contents of 'supabase_schema.sql', and click Run.";
       }
 
       setAlertConfig({
@@ -214,8 +218,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, pro
                      onClose();
                   }
                }}
-               className="w-full py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+               className="w-full py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex items-center justify-center gap-2"
              >
+               <LogOut size={16} />
                Log Out
              </button>
           </div>

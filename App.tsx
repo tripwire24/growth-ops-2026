@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { KanbanBoard } from './components/KanbanBoard';
@@ -8,15 +9,25 @@ import { AuthPage } from './components/AuthPage';
 import { useExperiments } from './hooks/useExperiments';
 import { useAuth } from './hooks/useAuth';
 import { isSupabaseConfigured } from './services/supabase';
-import { Experiment } from './types';
+import { Experiment, Board } from './types';
 
 export default function App() {
-  const { user, loading: authLoading } = useAuth();
-  const { experiments, updateStatus, updateExperiment, addExperiment, archiveExperiment, completeExperiment } = useExperiments();
+  const { user, profile, loading: authLoading, updateProfile, signOut } = useAuth();
+  const { experiments, boards, updateStatus, updateExperiment, addExperiment, archiveExperiment, completeExperiment, deleteExperiment, addBoard, updateBoard } = useExperiments();
+  
   const [activeTab, setActiveTab] = useState<'kanban' | 'vault' | 'analytics'>('kanban');
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewingSetup, setViewingSetup] = useState(false);
+
+  // Board State
+  const [activeBoardId, setActiveBoardId] = useState<string>('');
+
+  useEffect(() => {
+    if (boards.length > 0 && !activeBoardId) {
+        setActiveBoardId(boards[0].id);
+    }
+  }, [boards, activeBoardId]);
 
   // 1. Loading State
   if (isSupabaseConfigured && authLoading) {
@@ -44,7 +55,13 @@ export default function App() {
     const title = prompt("Enter experiment title:");
     if (!title) return;
     
+    if (!activeBoardId) {
+        alert("Please create or select a board first.");
+        return;
+    }
+
     addExperiment({
+      board_id: activeBoardId,
       title,
       description: 'Describe your hypothesis...',
       status: 'idea',
@@ -53,12 +70,24 @@ export default function App() {
       ice_ease: 5,
       market: 'US',
       type: 'Acquisition',
+      tags: []
     });
   };
 
   const openExperiment = (exp: Experiment) => {
     setSelectedExperiment(exp);
     setIsModalOpen(true);
+  };
+
+  // Simple handlers for Layout requirements in this simplified App.tsx
+  const handleCreateBoard = () => {
+    const name = prompt("Enter Board Name:");
+    if (name) addBoard(name, "New Board");
+  };
+
+  const handleEditBoard = (board: Board) => {
+    const name = prompt("Update Board Name:", board.name);
+    if (name) updateBoard(board.id, name, board.description);
   };
 
   return (
@@ -68,10 +97,20 @@ export default function App() {
       onNewExperiment={handleNewExperiment}
       isMockMode={!isSupabaseConfigured}
       onConnect={() => setViewingSetup(true)}
+      // Board Props
+      boards={boards}
+      activeBoardId={activeBoardId}
+      onSwitchBoard={setActiveBoardId}
+      onCreateBoard={handleCreateBoard}
+      onEditBoard={handleEditBoard}
+      // Profile Props
+      userProfile={profile}
+      onUpdateProfile={updateProfile}
+      onLogout={signOut}
     >
       {activeTab === 'kanban' && (
         <KanbanBoard 
-          experiments={experiments} 
+          experiments={experiments.filter(e => e.board_id === activeBoardId)} 
           onStatusUpdate={updateStatus}
           onCardClick={openExperiment}
           onArchive={archiveExperiment}
@@ -81,14 +120,15 @@ export default function App() {
       {activeTab === 'vault' && (
         <div className="p-6 h-full overflow-hidden">
           <VaultTable 
-            experiments={experiments} 
+            experiments={experiments.filter(e => e.board_id === activeBoardId)} 
             onEdit={openExperiment}
+            onDelete={deleteExperiment}
           />
         </div>
       )}
 
       {activeTab === 'analytics' && (
-        <AnalyticsView experiments={experiments} />
+        <AnalyticsView experiments={experiments.filter(e => e.board_id === activeBoardId)} />
       )}
 
       <ExperimentModal 
@@ -98,6 +138,7 @@ export default function App() {
         onSave={updateExperiment}
         onArchive={archiveExperiment}
         onComplete={completeExperiment}
+        onDelete={deleteExperiment}
       />
     </Layout>
   );
