@@ -3,7 +3,7 @@
 // Layout.tsx — Updated with Academy tab + Board Settings button
 // ==========================================
 import React, { useEffect, useState } from 'react';
-import { Layers, Database, Plus, Menu, User, BarChart2, Moon, Sun, AlertTriangle, Layout as LayoutIcon, Settings, ChevronRight, LogOut, GraduationCap, Sliders } from 'lucide-react';
+import { Layers, Database, Plus, Menu, User, BarChart2, Moon, Sun, AlertTriangle, Layout as LayoutIcon, Settings, ChevronRight, LogOut, GraduationCap, Sliders, UserPlus } from 'lucide-react';
 import { Board, UserProfile } from '../types';
 import { ProfileModal } from './ProfileModal';
 
@@ -21,6 +21,8 @@ interface LayoutProps {
   onCreateBoard: () => void;
   onEditBoard: (board: Board) => void;
   onOpenBoardSettings?: () => void;
+  // Invite Prop
+  onInvite?: () => void;
   // Profile Props
   userProfile: UserProfile | null;
   onUpdateProfile: (updates: Partial<UserProfile>, avatarFile?: File) => Promise<void>;
@@ -61,7 +63,7 @@ const ThemeToggle = () => {
 
 export const Layout: React.FC<LayoutProps> = ({ 
   children, activeTab, setActiveTab, onNewExperiment, isMockMode, onConnect,
-  boards, activeBoardId, onSwitchBoard, onCreateBoard, onEditBoard, onOpenBoardSettings,
+  boards, activeBoardId, onSwitchBoard, onCreateBoard, onEditBoard, onOpenBoardSettings, onInvite,
   userProfile, onUpdateProfile, onLogout
 }) => {
   
@@ -188,6 +190,21 @@ export const Layout: React.FC<LayoutProps> = ({
              <button onClick={onConnect} className="w-full bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-semibold py-2 rounded-md transition-colors flex items-center justify-center gap-2">
                <Database size={12} /> Connect Database
              </button>
+          </div>
+        )}
+
+        {/* Invite Button */}
+        {onInvite && (
+          <div className="px-4 pb-2">
+            <button
+              onClick={onInvite}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-md bg-indigo-900/30 text-indigo-300 hover:bg-indigo-900/50 hover:text-white transition-all text-sm font-medium border border-indigo-800/50 group"
+            >
+              <div className="bg-indigo-500/20 p-1 rounded group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                <UserPlus size={16} />
+              </div>
+              Invite Member
+            </button>
           </div>
         )}
 

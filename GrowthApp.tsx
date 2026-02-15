@@ -8,12 +8,14 @@ import { AcademyView } from './components/AcademyView';
 import { ExperimentModal } from './components/ExperimentModal';
 import { BoardModal } from './components/BoardModal';
 import { BoardSettingsModal } from './components/BoardSettingsModal';
+import { InviteModal } from './components/InviteModal';
 import { AuthPage } from './components/AuthPage';
 import { useExperiments } from './hooks/useExperiments';
 import { useAuth } from './hooks/useAuth';
-import { isSupabaseConfigured } from './services/supabase';
+import { isSupabaseConfigured, supabase } from './services/supabase';
 import { Experiment, Board, UserProfile, BoardConfig } from './types';
 import { CustomAlert } from './components/CustomAlert';
+import { Database, Copy, Check } from 'lucide-react';
 
 export default function GrowthApp() {
   const { user, profile: authProfile, loading: authLoading, updateProfile: updateAuthProfile, signOut } = useAuth();
@@ -46,6 +48,9 @@ export default function GrowthApp() {
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
   const [isBoardSettingsOpen, setIsBoardSettingsOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<Board | undefined>(undefined);
+  
+  // Invite State
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   const [viewingSetup, setViewingSetup] = useState(false);
   
@@ -54,6 +59,10 @@ export default function GrowthApp() {
     isOpen: false, title: '', message: '', type: 'info'
   });
 
+  // Database Schema Check State
+  const [dbError, setDbError] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   // Initialize Active Board
   useEffect(() => {
     if (boards.length > 0 && !activeBoardId) {
@@ -61,10 +70,21 @@ export default function GrowthApp() {
     }
   }, [boards, activeBoardId]);
 
-  // Debug log
+  // Database Connection Check
   useEffect(() => {
-    console.log("Growth Ops PWA Loaded Successfully (V2)");
-  }, []);
+    const checkDb = async () => {
+      if (!isSupabaseConfigured || isGuestMode || !user) return;
+      
+      // Try to select from profiles to check if table exists
+      const { error } = await supabase!.from('profiles').select('id').limit(1);
+      
+      if (error && (error.code === '42P01' || error.message.includes('relation "public.profiles" does not exist'))) {
+        setDbError(true);
+      }
+    };
+    
+    checkDb();
+  }, [user, isGuestMode]);
 
   // 1. Loading State
   if (isSupabaseConfigured && authLoading) {
@@ -84,6 +104,115 @@ export default function GrowthApp() {
   // 3. Setup/Connect Screen
   if (!isSupabaseConfigured && viewingSetup) {
     return <AuthPage onBackToDemo={() => setViewingSetup(false)} />;
+  }
+
+  // SCHEMA ERROR MODAL
+  if (dbError) {
+    const schemaSQL = `-- Run this in Supabase SQL Editor
+create type experiment_status as enum ('idea', 'hypothesis', 'running', 'complete', 'learnings');
+create type experiment_result as enum ('won', 'lost', 'inconclusive');
+
+create table profiles (
+  id uuid references auth.users not null primary key,
+  full_name text,
+  avatar_url text,
+  bio text,
+  linkedin_url text,
+  contact_email text,
+  updated_at timestamp with time zone
+);
+
+create table experiments (
+  id uuid default gen_random_uuid() primary key,
+  owner_id uuid references auth.users default auth.uid(),
+  title text not null,
+  description text,
+  status experiment_status default 'idea',
+  result experiment_result,
+  ice_impact integer default 5,
+  ice_confidence integer default 5,
+  ice_ease integer default 5,
+  market text,
+  type text,
+  tags text[] default '{}',
+  archived boolean default false,
+  locked boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create table comments (
+  id uuid default gen_random_uuid() primary key,
+  experiment_id uuid references experiments(id) on delete cascade not null,
+  user_id uuid references auth.users not null,
+  text text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table profiles enable row level security;
+alter table experiments enable row level security;
+alter table comments enable row level security;
+
+create policy "Public profiles" on profiles for select using (true);
+create policy "Users update own profile" on profiles for update using (auth.uid() = id);
+create policy "Users insert own profile" on profiles for insert with check (auth.uid() = id);
+
+create policy "Public experiments" on experiments for select using (true);
+create policy "Auth users insert experiments" on experiments for insert with check (auth.role() = 'authenticated');
+create policy "Auth users update experiments" on experiments for update using (auth.role() = 'authenticated');
+
+create policy "Public comments" on comments for select using (true);
+create policy "Auth users insert comments" on comments for insert with check (auth.role() = 'authenticated');
+
+insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
+create policy "Public avatars" on storage.objects for select using ( bucket_id = 'avatars' );
+create policy "Upload avatars" on storage.objects for insert with check ( bucket_id = 'avatars' );`;
+
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900 text-white">
+        <div className="max-w-2xl w-full bg-slate-800 rounded-xl border border-slate-700 p-8 shadow-2xl">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="p-3 bg-red-500/20 rounded-full text-red-400">
+              <Database size={32} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Database Setup Required</h1>
+              <p className="text-slate-400">Your Supabase project is connected, but the tables are missing.</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-950 rounded-lg p-4 mb-6 border border-slate-700 overflow-hidden relative group">
+            <pre className="text-xs text-slate-300 font-mono overflow-auto max-h-60 p-2">
+              {schemaSQL}
+            </pre>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(schemaSQL);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="absolute top-2 right-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-2 transition-colors border border-slate-600"
+            >
+              {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+              {copied ? 'Copied!' : 'Copy SQL'}
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-sm text-slate-300">
+              1. Go to your <strong>Supabase Dashboard</strong> &rarr; <strong>SQL Editor</strong>.<br/>
+              2. Paste the SQL code above and click <strong>Run</strong>.<br/>
+              3. Once successful, click the button below to reload.
+            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors"
+            >
+              I've Run the SQL (Reload App)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // --- Handlers ---
@@ -227,6 +356,8 @@ export default function GrowthApp() {
       onCreateBoard={handleCreateBoard}
       onEditBoard={handleEditBoard}
       onOpenBoardSettings={() => setIsBoardSettingsOpen(true)}
+      // Invite
+      onInvite={() => setIsInviteModalOpen(true)}
       // Profile Props
       userProfile={activeProfile}
       onUpdateProfile={handleUpdateProfile}
@@ -286,6 +417,11 @@ export default function GrowthApp() {
         onClose={() => setIsBoardSettingsOpen(false)}
         board={activeBoard || null}
         onSave={handleSaveBoardConfig}
+      />
+
+      <InviteModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
       />
 
       <CustomAlert 

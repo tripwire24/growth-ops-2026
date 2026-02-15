@@ -21,9 +21,8 @@ export function useAuth() {
 
     if (error) {
        // If the error is 'PGRST116' it means no rows returned, which is fine (new user).
-       // If it is '42P01' (undefined_table) or schema cache error, we log it for the developer.
        if (error.code !== 'PGRST116') {
-         console.error('Fetch Profile Error:', error);
+         console.warn('Fetch Profile Warning:', error.message);
        }
     }
     
@@ -38,9 +37,12 @@ export function useAuth() {
         contact_email: data.contact_email
       });
     } else {
-        // Fallback: If profile row doesn't exist, we create a temporary local profile object
-        // This will be saved to DB on the first "Update Profile" action.
-        setProfile({ id: userId, email });
+        // Fallback: If profile row doesn't exist yet, use metadata or email
+        setProfile({ 
+            id: userId, 
+            email,
+            full_name: user?.user_metadata?.full_name // Use metadata if available
+        });
     }
   };
 
@@ -94,13 +96,16 @@ export function useAuth() {
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, fullName?: string) => {
     if (!supabase) return;
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: window.location.origin,
+        data: {
+            full_name: fullName // Pass to metadata so trigger can populate profile
+        }
       }
     });
     if (error) throw error;
@@ -156,10 +161,7 @@ export function useAuth() {
     const { error } = await supabase.from('profiles').upsert(dbUpdates);
     
     if (error) {
-        // Log the full error to help debug SQL/Schema issues
         console.error("Supabase Upsert Error:", error);
-        
-        // Pass the error up so UI can display it
         throw new Error(error.message);
     }
 

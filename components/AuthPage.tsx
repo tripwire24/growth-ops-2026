@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { isSupabaseConfigured } from '../services/supabase';
-import { Mail, Lock, ArrowRight, AlertCircle, Database, Settings, Key, ArrowLeft, ExternalLink, CheckCircle, RefreshCw, Globe, Wand2, UserPlus, LogIn, LayoutTemplate } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, Database, Settings, Key, ArrowLeft, ExternalLink, CheckCircle, RefreshCw, Globe, Wand2, UserPlus, LogIn, LayoutTemplate, User } from 'lucide-react';
 
 interface AuthPageProps {
   onBackToDemo?: () => void;
@@ -15,6 +16,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo, onContinueAsGu
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'magic'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   
   // Status State
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo, onContinueAsGu
         await signInWithPassword(email, password);
         // Auth state change will trigger redirect automatically via App.tsx
       } else if (authMode === 'signup') {
-        await signUp(email, password);
+        await signUp(email, password, fullName);
         setSuccessMessage('Account created! Please check your email to confirm your account before logging in.');
         setAuthMode('signin'); // Switch to sign in view
       } else if (authMode === 'magic') {
@@ -118,6 +120,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo, onContinueAsGu
                </div>
              </div>
 
+             <div className="mt-6 p-4 bg-blue-900/20 border border-blue-800/50 rounded-lg text-sm text-blue-200 max-w-2xl mx-auto">
+                <p className="flex items-center justify-center gap-2">
+                  <AlertCircle size={16} />
+                  <strong>Deployed to Vercel?</strong> Don't forget to add these keys in your Vercel Project Settings &gt; Environment Variables.
+                </p>
+             </div>
+
              <button onClick={() => window.location.reload()} className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors border border-slate-700 w-full sm:w-auto">
                I've Updated My Keys (Reload)
              </button>
@@ -188,6 +197,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackToDemo, onContinueAsGu
                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-lg flex items-start gap-2 text-sm mb-4">
                 <CheckCircle size={16} className="mt-0.5 shrink-0" />
                 <span>{successMessage}</span>
+              </div>
+            )}
+
+            {/* FULL NAME FIELD (SIGNUP ONLY) */}
+            {authMode === 'signup' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input 
+                    type="text" 
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    placeholder="John Doe"
+                  />
+                </div>
               </div>
             )}
 
