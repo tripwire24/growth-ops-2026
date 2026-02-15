@@ -63,8 +63,8 @@ const ThemeToggle = () => {
 
 export const Layout: React.FC<LayoutProps> = ({ 
   children, activeTab, setActiveTab, onNewExperiment, isMockMode, onConnect,
-  boards, activeBoardId, onSwitchBoard, onCreateBoard, onEditBoard, onOpenBoardSettings, onInvite,
-  userProfile, onUpdateProfile, onLogout
+  boards, activeBoardId, onSwitchBoard, onCreateBoard, onEditBoard, onOpenBoardSettings,
+  userProfile, onUpdateProfile, onLogout, onInvite
 }) => {
   
   const currentBoard = boards.find(b => b.id === activeBoardId);
@@ -193,21 +193,6 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         )}
 
-        {/* Invite Button */}
-        {onInvite && (
-          <div className="px-4 pb-2">
-            <button
-              onClick={onInvite}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-md bg-indigo-900/30 text-indigo-300 hover:bg-indigo-900/50 hover:text-white transition-all text-sm font-medium border border-indigo-800/50 group"
-            >
-              <div className="bg-indigo-500/20 p-1 rounded group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                <UserPlus size={16} />
-              </div>
-              Invite Member
-            </button>
-          </div>
-        )}
-
         {/* User Profile Area */}
         <div className="p-4 border-t border-slate-800 flex items-center gap-3">
           <button 
@@ -258,7 +243,15 @@ export const Layout: React.FC<LayoutProps> = ({
                {activeTab}
              </span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            {onInvite && (
+              <button 
+                onClick={onInvite}
+                className="p-2 text-indigo-400 hover:text-white"
+              >
+                <UserPlus size={20} />
+              </button>
+            )}
             <ThemeToggle />
             <button 
               onClick={() => setIsProfileOpen(true)}
@@ -318,6 +311,16 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
           
           <div className="flex gap-3 ml-auto">
+             {onInvite && (
+               <button 
+                onClick={onInvite}
+                className="hidden md:flex bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-md font-medium text-sm items-center gap-2 transition-colors"
+               >
+                <UserPlus size={16} />
+                <span>Invite</span>
+               </button>
+             )}
+             
              {activeTab !== 'academy' && (
                <button 
                 onClick={onNewExperiment}
