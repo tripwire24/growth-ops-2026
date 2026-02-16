@@ -1,33 +1,42 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import GrowthApp from './GrowthApp';
 
-// 1. Force Unregister any stale Service Workers (Fixes the "Wrong App" caching issue)
-const cleanupServiceWorkers = async () => {
+// 1. Force Unregister any stale Service Workers & Clear Cache
+// This prevents the "Zombie App" issue where Vercel deployments don't show up
+const cleanupCachesAndWorkers = async () => {
+  console.log("Checking for stale caches and workers...");
+  
+  // A. Unregister Service Workers
   if ('serviceWorker' in navigator) {
     try {
       const registrations = await navigator.serviceWorker.getRegistrations();
       for (const registration of registrations) {
-        console.log("Unregistering stale service worker:", registration);
-        try {
-          await registration.unregister();
-        } catch (err) {
-          console.warn("Failed to unregister specific SW:", err);
-        }
+        console.log("Unregistering SW:", registration);
+        await registration.unregister();
       }
-    } catch (error) {
-      // Catch "The document is in an invalid state" or other access errors safely
-      console.warn("Service Worker cleanup skipped (harmless):", error);
+    } catch (err) {
+      console.warn("SW cleanup failed:", err);
+    }
+  }
+
+  // B. Delete Cache Storage (Aggressive Cache Busting)
+  if ('caches' in window) {
+    try {
+      const keys = await caches.keys();
+      for (const key of keys) {
+        console.log("Deleting cache:", key);
+        await caches.delete(key);
+      }
+    } catch (err) {
+      console.warn("Cache cleanup failed:", err);
     }
   }
 };
 
-// Execute when the page is fully loaded
-if (document.readyState === 'complete') {
-  cleanupServiceWorkers();
-} else {
-  window.addEventListener('load', cleanupServiceWorkers);
-}
+// Execute immediately
+cleanupCachesAndWorkers();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

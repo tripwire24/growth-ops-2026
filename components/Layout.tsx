@@ -193,37 +193,58 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         )}
 
+        {/* Invite Button */}
+        {onInvite && (
+          <div className="px-4 pb-2">
+            <button
+              onClick={onInvite}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-md bg-indigo-900/30 text-indigo-300 hover:bg-indigo-900/50 hover:text-white transition-all text-sm font-medium border border-indigo-800/50 group"
+            >
+              <div className="bg-indigo-500/20 p-1 rounded group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                <UserPlus size={16} />
+              </div>
+              Invite Member
+            </button>
+          </div>
+        )}
+
         {/* User Profile Area */}
-        <div className="p-4 border-t border-slate-800 flex items-center gap-3">
-          <button 
-             onClick={() => setIsProfileOpen(true)}
-             className="group flex items-center gap-3 flex-1 min-w-0 p-1 -m-1 rounded-md hover:bg-slate-800 transition-colors"
-          >
-             <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden">
-               {userProfile?.avatar_url ? (
-                 <img src={userProfile.avatar_url} alt="" className="w-full h-full object-cover" />
-               ) : (
-                 displayName ? displayName.charAt(0).toUpperCase() : <User size={16} />
-               )}
-             </div>
-             <div className="text-sm overflow-hidden flex-1">
-               <p className="font-medium truncate">{displayName}</p>
-               <p className="text-xs text-slate-500 truncate">{displayStatus}</p>
-             </div>
-             <Settings size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
-          
-          <div className="h-6 w-px bg-slate-800 mx-1"></div>
-          
-          <ThemeToggle />
-          
-          <button 
-             onClick={onLogout}
-             className="p-2 text-slate-400 hover:text-red-400 transition-colors"
-             title="Log Out"
-          >
-            <LogOut size={18} />
-          </button>
+        <div className="p-4 border-t border-slate-800">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsProfileOpen(true)}
+              className="group flex items-center gap-3 flex-1 min-w-0 p-1 -m-1 rounded-md hover:bg-slate-800 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden">
+                {userProfile?.avatar_url ? (
+                  <img src={userProfile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  displayName ? displayName.charAt(0).toUpperCase() : <User size={16} />
+                )}
+              </div>
+              <div className="text-sm overflow-hidden flex-1 text-left">
+                <p className="font-medium truncate text-white">{displayName}</p>
+                <p className="text-xs text-slate-500 truncate">{displayStatus}</p>
+              </div>
+              <Settings size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
+            </button>
+            
+            <div className="h-6 w-px bg-slate-800 mx-1"></div>
+            
+            <ThemeToggle />
+            
+            <button 
+              onClick={onLogout}
+              className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+              title="Log Out"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+          {/* VERSION INDICATOR FOR DEBUGGING */}
+          <div className="text-[10px] text-slate-600 dark:text-slate-700 text-center mt-3 font-mono opacity-50 hover:opacity-100 transition-opacity">
+            App v1.1 • Updated
+          </div>
         </div>
       </aside>
 
